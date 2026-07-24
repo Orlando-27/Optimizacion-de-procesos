@@ -1,0 +1,40 @@
+# Secretos y entorno
+.env
+*.env
+!.env.example
+
+# Sandbox de pruebas y salidas
+sandbox/
+logs/
+*.xlsx
+*.xlsm~
+~$*
+
+# Python
+__pycache__/
+*.py[cod]
+*.egg-info/
+.eggs/
+build/
+dist/
+.venv/
+venv/
+env/
+.pytest_cache/
+.mypy_cache/
+.ruff_cache/
+
+# Base de datos local de corridas
+*.db
+*.sqlite3
+
+# Selenium / navegador
+*.png
+!procesos/**/fixtures/*.png
+screenshots/
+
+# SO / editores
+.DS_Store
+Thumbs.db
+.idea/
+.vscode/

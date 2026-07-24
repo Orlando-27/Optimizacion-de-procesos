@@ -1,0 +1,21 @@
+# === Manifiesto del proceso (metadatos para el motor / catalogo futuro) ===
+process_id: impugnacion_rfl
+nombre: "Impugnacion de Precios - Renta Fija Local"
+version: "0.1.0"
+owner: "jbobadilla@colfondos.com.co"
+descripcion: >
+  Detecta el correo detonante de Precia, parsea las ventanas de impugnacion,
+  descarga el archivo de valoracion del portal, genera el reporte de
+  impugnacion (macro migrada a Python) y lo envia por correo dentro de la
+  ventana de tiempo.
+criticidad: alta
+sla_seg: 300
+trigger: "scheduler (Programador de Tareas, 15:45 L-V)"
+dependencias:
+  - "Portal Precia (Selenium)"
+  - "Correo detonante (Outlook/IMAP)"
+  - "Almacenamiento INFOVALMER / Impugnacion (UNC en prod, sandbox en test)"
+etapas:
+  extract: "pasos 1-3: detectar correo, parsear ventanas, login+descarga portal"
+  transform: "pasos 4-6: guardar en INFOVALMER, generar reporte, confirmar salida"
+  load: "paso 7: componer y enviar correo con adjunto; archivar copia fechada"

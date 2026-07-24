@@ -1,0 +1,60 @@
+# === Configuracion del proceso impugnacion_rfl ===
+# Interruptor global: cambia rutas, destinatarios y efectos secundarios.
+entorno: test              # test | prod
+
+rutas:
+  test:
+    infovalmer: "./sandbox/INFOVALMER"
+    impugnacion: "./sandbox/Impugnacion"
+  prod:
+    # OJO: usar UNC, NO "M:\". El Programador de Tareas en sesion no interactiva
+    # no ve las unidades mapeadas. Reemplazar SERVIDOR por el host real (net use).
+    infovalmer: "\\\\SERVIDOR\\COB\\Gerencia Estrategia\\Analisis Cuantitativo\\BDatos\\INFOVALMER"
+    impugnacion: "\\\\SERVIDOR\\COB\\Gerencia Estrategia\\Analisis Cuantitativo\\GERENCIA DE ANALISIS\\ANALISIS FINANCIERO\\ANALISIS CUANTITATIVO\\Impugnacion"
+
+correo_entrada:
+  remitente: "atencionalcliente@precia.co"
+  asunto_contiene: "Publicación Renta Fija Local"
+  hora_inicio_poll: "15:45"
+  hora_limite_espera: "16:20"
+  intervalo_poll_seg: 60
+  # remitente_test: "joseorlando202014@gmail.com"   # para simular el detonante en test
+
+correo_salida:
+  asunto: "Publicación Renta Fija Local - Archivo Impugnación RFL"
+  destinatarios:
+    test: ["joseorlando202014@gmail.com"]
+    # Lista real vista en el correo de salida (confirmar antes de pasar a prod):
+    prod:
+      - "jhon.guevara@colfondos.com.co"           # <TODO confirmar correo exacto>
+      - "jennifer.castiblanco@colfondos.com.co"   # <TODO confirmar>
+      - "alejandra.guzman@colfondos.com.co"       # <TODO confirmar>
+      - "nicolas.aldana@colfondos.com.co"         # <TODO confirmar>
+      - "julian.silva@colfondos.com.co"           # <TODO confirmar>
+      - "jose.bobadilla@colfondos.com.co"         # <TODO confirmar>
+  cc:
+    test: []
+    prod: []
+  plantilla: "plantillas/cuerpo_correo.html"
+
+excel:
+  # La macro se MIGRA a Python (motor: python). Los demas campos quedan como
+  # fallback documentado por si hay que correr el VBA original via COM.
+  motor: "python"
+  archivo_macro: "Informacion Impugnacion.xlsm"
+  nombre_macro: "<PENDIENTE_CONFIRMAR>"     # se llenara al inspeccionar el .xlsm
+  archivo_salida: "Renta Fija.xlsx"
+  timeout_seg: 300
+
+portal:
+  url_login: "https://www.precia.co/wp-login.php"
+  headless: true
+  timeout_seg: 120
+  patron_archivo: "SX{MMDDYY}"              # nombre del plano: SXMMDDYY
+  tam_minimo_bytes: 1024
+
+alertas:
+  owner: "jbobadilla@colfondos.com.co"
+
+sla:
+  max_duracion_seg: 300
