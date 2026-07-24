@@ -62,7 +62,9 @@ class ExcelCfg(BaseModel):
     nombre_macro: str = "<PENDIENTE_CONFIRMAR>"
     archivo_salida: str = "Renta Fija.xlsx"
     timeout_seg: int = 300
-    motor: Literal["python", "com"] = "python"  # "python" = macro migrada
+    # "python" = macro migrada (paso 5, pendiente) | "placeholder" = salida
+    # minima para probar el pipeline | "com" = correr el VBA original (Windows).
+    motor: Literal["python", "placeholder", "com"] = "python"
 
 
 class PortalCfg(BaseModel):
@@ -92,6 +94,14 @@ class Config(BaseModel):
     portal: PortalCfg
     alertas: AlertasCfg
     sla: SlaCfg
+    # Backend de correo por entorno: "simulado" | "smtp_imap" | "outlook_com"
+    backend_correo: dict[str, str] = Field(
+        default_factory=lambda: {"test": "simulado", "prod": "smtp_imap"}
+    )
+    # Backend del portal por entorno: "simulado" | "selenium"
+    backend_portal: dict[str, str] = Field(
+        default_factory=lambda: {"test": "simulado", "prod": "selenium"}
+    )
 
     # --- Propiedades resueltas segun el entorno activo ---
     @property
@@ -122,6 +132,14 @@ class Config(BaseModel):
     def enviar_de_verdad(self) -> bool:
         """En test se guarda como borrador; en prod se envia."""
         return self.entorno == "prod"
+
+    @property
+    def backend_correo_activo(self) -> str:
+        return self.backend_correo.get(self.entorno, "simulado")
+
+    @property
+    def backend_portal_activo(self) -> str:
+        return self.backend_portal.get(self.entorno, "simulado")
 
 
 def cargar_config(ruta_yaml: str | Path) -> Config:

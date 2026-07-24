@@ -44,6 +44,21 @@ class ParserError(ProcesoError):
     """No se pudo parsear informacion critica (p. ej. las ventanas del correo)."""
 
 
+class ProcesoSkip(ProcesoError):
+    """Senal de que la corrida debe saltarse SIN alertar (dia no habil,
+    ya hubo un SUCCESS hoy, ...). -> RunStatus.SKIPPED."""
+
+
+class ProcesoEsperando(ProcesoError):
+    """El insumo aun no esta disponible (p. ej. el correo no ha llegado dentro
+    de la ventana). -> RunStatus.WAITING/FAILED segun el caso."""
+
+
+class PasoPendienteError(ProcesoError):
+    """Un paso aun no esta implementado (p. ej. paso 5: macro por migrar).
+    Se usa para fallar de forma explicita y trazable, nunca en silencio."""
+
+
 @dataclass
 class ProcessContext:
     """Todo lo que un proceso necesita para correr, inyectado desde afuera.
@@ -138,6 +153,7 @@ class Proceso(ABC):
             trigger=ctx.trigger,
             disparado_por=ctx.disparado_por,
         )
+        inicio_orig = res.inicio
         t0 = time.perf_counter()
         try:
             ctx.logger.info("extract:inicio")
@@ -154,6 +170,14 @@ class Proceso(ABC):
             if res.status == RunStatus.WAITING:
                 res.status = RunStatus.SUCCESS
 
+        except ProcesoSkip as e:
+            res.status = RunStatus.SKIPPED
+            res.mensaje = str(e)
+            ctx.logger.info("proceso_saltado", extra={"detalle": str(e)})
+        except ProcesoEsperando as e:
+            res.status = RunStatus.WAITING
+            res.mensaje = str(e)
+            ctx.logger.warning("proceso_esperando", extra={"detalle": str(e)})
         except ValidacionError as e:
             res.status = RunStatus.VALIDATION_FAILED
             res.mensaje = str(e)
@@ -175,6 +199,9 @@ class Proceso(ABC):
             res.traceback = traceback.format_exc()
             ctx.logger.exception("error_inesperado")
         finally:
+            # load() puede devolver un ProcessResult nuevo sin inicio: se preserva.
+            if res.inicio is None:
+                res.inicio = inicio_orig
             res.metrics.setdefault("duracion_perf_seg", round(time.perf_counter() - t0, 3))
             res.marcar_fin()
             ctx.logger.info("run:fin", extra={"status": res.status.value})

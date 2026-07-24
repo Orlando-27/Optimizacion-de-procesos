@@ -38,13 +38,22 @@ correo_salida:
   plantilla: "plantillas/cuerpo_correo.html"
 
 excel:
-  # La macro se MIGRA a Python (motor: python). Los demas campos quedan como
-  # fallback documentado por si hay que correr el VBA original via COM.
-  motor: "python"
+  # PASO 5 PENDIENTE: la logica de la macro aun no se migra a Python.
+  # motor="placeholder" genera una salida minima para probar el pipeline.
+  # Cuando se complete la migracion (ver PENDIENTE_PASO_5.md) -> motor="python".
+  motor: "placeholder"                      # placeholder | python | com
   archivo_macro: "Informacion Impugnacion.xlsm"
   nombre_macro: "<PENDIENTE_CONFIRMAR>"     # se llenara al inspeccionar el .xlsm
   archivo_salida: "Renta Fija.xlsx"
   timeout_seg: 300
+
+# Backend de I/O por entorno (se pueden sobreescribir aqui).
+backend_correo:
+  test: "simulado"      # simulado | smtp_imap | outlook_com
+  prod: "smtp_imap"     # en prod: smtp_imap (portable) u outlook_com (Windows)
+backend_portal:
+  test: "simulado"      # simulado | selenium
+  prod: "selenium"
 
 portal:
   url_login: "https://www.precia.co/wp-login.php"
