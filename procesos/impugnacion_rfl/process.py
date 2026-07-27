@@ -306,12 +306,9 @@ def main(argv=None) -> int:
         cfg.backend_portal[cfg.entorno] = args.portal
     extra = {"fecha_override": args.fecha} if args.fecha else {}
 
-    # Idempotencia (seccion 7): si ya hubo SUCCESS hoy -> SKIPPED.
     store = RunStore()
-    if store.existe_success_hoy(ImpugnacionRFL.process_id):
-        print("SKIPPED: ya hubo una corrida SUCCESS hoy (idempotencia).")
-        return 0
 
+    # --paso es modo depuracion: NO aplica idempotencia (se puede correr varias veces).
     if args.paso is not None:
         from core.logging_config import configurar_logging
         from core.runner import nuevo_run_id
@@ -319,6 +316,11 @@ def main(argv=None) -> int:
         logger = configurar_logging(run_id, ImpugnacionRFL.process_id, Path("logs"))
         proceso = construir_proceso(cfg, logger=logger, ruta_simular_correo=args.simular_correo)
         return _correr_paso(proceso, cfg, logger, args, extra)
+
+    # Idempotencia (seccion 7): si ya hubo SUCCESS hoy -> SKIPPED (solo run completo).
+    if store.existe_success_hoy(ImpugnacionRFL.process_id):
+        print("SKIPPED: ya hubo una corrida SUCCESS hoy (idempotencia).")
+        return 0
 
     # Ruta normal: el runner crea el logger/run_id y el proceso lo propaga a
     # sus adaptadores (ver _sincronizar_logger).
