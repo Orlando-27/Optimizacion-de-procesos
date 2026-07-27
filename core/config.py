@@ -80,6 +80,13 @@ class PortalCfg(BaseModel):
 
 class AlertasCfg(BaseModel):
     owner: str
+    asunto: str = "Proceso Impugnación RFL NO se ejecutó"
+    # A quienes se avisa si el proceso falla (distinto de los destinatarios del
+    # correo de salida). Correos de prueba: reemplazar por los reales.
+    destinatarios: dict[str, list[str]] = Field(
+        default_factory=lambda: {"test": [], "prod": []}
+    )
+    cc: dict[str, list[str]] = Field(default_factory=lambda: {"test": [], "prod": []})
 
 
 class SlaCfg(BaseModel):
@@ -135,6 +142,15 @@ class Config(BaseModel):
     def enviar_de_verdad(self) -> bool:
         """En test se guarda como borrador; en prod se envia."""
         return self.entorno == "prod"
+
+    @property
+    def destinatarios_alerta_activos(self) -> list[str]:
+        """A quienes avisar si el proceso falla (segun entorno)."""
+        return self.alertas.destinatarios.get(self.entorno, [])
+
+    @property
+    def cc_alerta_activos(self) -> list[str]:
+        return self.alertas.cc.get(self.entorno, [])
 
     @property
     def backend_correo_activo(self) -> str:

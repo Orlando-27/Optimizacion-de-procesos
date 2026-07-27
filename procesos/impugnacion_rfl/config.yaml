@@ -69,6 +69,18 @@ portal:
 
 alertas:
   owner: "jbobadilla@colfondos.com.co"
+  asunto: "Proceso Impugnación RFL NO se ejecutó"
+  # A quiénes se avisa si el proceso FALLA (distinto del correo de salida).
+  # Correos de PRUEBA: reemplazar por los reales antes de producción.
+  destinatarios:
+    test: ["jbobadilla@colfondos.com.co"]
+    prod:
+      - "jbobadilla@colfondos.com.co"          # <TODO reemplazar por los reales>
+      - "persona2.alertas@colfondos.com.co"    # <TODO reemplazar>
+      - "persona3.alertas@colfondos.com.co"    # <TODO reemplazar>
+  cc:
+    test: []
+    prod: []
 
 sla:
   max_duracion_seg: 300

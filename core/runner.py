@@ -73,7 +73,8 @@ def ejecutar(
     if notificar_fallo and res.status in (RunStatus.FAILED, RunStatus.VALIDATION_FAILED):
         try:
             from core.notifications import alertar_owner
-            alertar_owner(config, res, logger)
+            # Reusa el MailClient del proceso para enviar el aviso (Outlook, etc.).
+            alertar_owner(config, res, logger, mail=getattr(proceso, "mail", None))
         except Exception:  # noqa: BLE001
             logger.exception("notificacion:error")
 
