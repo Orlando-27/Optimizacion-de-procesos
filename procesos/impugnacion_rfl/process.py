@@ -287,6 +287,8 @@ def _parse_args(argv=None) -> argparse.Namespace:
     p.add_argument("--simular-correo", type=Path, help="Usa un cuerpo de correo de archivo")
     p.add_argument("--portal", choices=["simulado", "selenium"],
                    help="Sobreescribe el backend del portal (probar descarga real: selenium)")
+    p.add_argument("--headed", action="store_true",
+                   help="Fuerza el navegador con ventana visible (util para depurar la descarga)")
     p.add_argument("--fecha", type=_parse_fecha,
                    help="Forzar fecha objetivo YYYY-MM-DD (probar con un dia con archivos)")
     p.add_argument("--config", type=Path, default=RUTA_CONFIG)
@@ -304,6 +306,8 @@ def main(argv=None) -> int:
         cfg.entorno = args.entorno
     if args.portal:  # override del backend del portal (p. ej. probar descarga real)
         cfg.backend_portal[cfg.entorno] = args.portal
+    if args.headed:  # ver el navegador (headless suele fallar en apps JSF complejas)
+        cfg.portal.headless = False
     extra = {"fecha_override": args.fecha} if args.fecha else {}
 
     store = RunStore()

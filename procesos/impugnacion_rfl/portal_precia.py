@@ -109,6 +109,7 @@ class PortalPreciaSelenium(PortalRFL):
         self.chrome_binary = chrome_binary or os.environ.get("CHROME_BINARY")
         self.chromedriver_path = chromedriver_path or os.environ.get("CHROMEDRIVER_PATH")
         self.proxy = proxy or os.environ.get("SELENIUM_PROXY")
+        self._etapa_actual = "init"
 
     def _nuevo_driver(self, carpeta_destino: Path, headless: bool):
         from selenium import webdriver
@@ -121,6 +122,9 @@ class PortalPreciaSelenium(PortalRFL):
         opts.add_argument("--no-sandbox")
         opts.add_argument("--disable-dev-shm-usage")
         opts.add_argument("--disable-gpu")
+        opts.add_argument("--window-size=1920,1080")   # que todo quede visible/clicable
+        opts.add_argument("--ignore-certificate-errors")  # iframe servido desde una IP (cert)
+        opts.set_capability("acceptInsecureCerts", True)
         if self.chrome_binary:
             opts.binary_location = self.chrome_binary
         if self.proxy:
@@ -176,21 +180,28 @@ class PortalPreciaSelenium(PortalRFL):
             wait = WebDriverWait(driver, self.timeout_seg)
 
             # 1) Login (CONFIRMADO)
+            self._etapa("login")
             self.login(driver, wait, usuario, clave)
 
             # 2) Area de clientes -> boton 'Archivos Renta Fija Local' (#arlo)
+            self._etapa("abrir_area_clientes")
             driver.get(URL_AREA_CLIENTES)
             wait.until(lambda d: d.execute_script("return document.readyState") == "complete")
+            self._etapa("click_archivos_rfl")
             wait.until(EC.element_to_be_clickable((By.CSS_SELECTOR, SEL_BTN_ARCHIVOS_RFL))).click()
 
             # 3) Entrar al iframe con la app JSF (Infovalmer-web)
+            self._etapa("entrar_iframe")
             wait.until(EC.frame_to_be_available_and_switch_to_it((By.ID, IFRAME_CONTENIDO)))
+            self._etapa("esperar_tabla")
             wait.until(EC.presence_of_element_located((By.ID, SEL_TABLA_ARCHIVOS)))
 
             # 4) Seleccionar la fecha objetivo en el calendario inline
+            self._etapa("seleccionar_fecha")
             self._seleccionar_fecha(driver, wait, fecha)
 
             # 5) Ubicar la fila del archivo SX{MMDDYY} y hacer clic en su descarga
+            self._etapa(f"buscar_fila_{objetivo}")
             xpath_link = (
                 f"//tr[starts-with(@data-rk, '{objetivo}')]"
                 f"//a[.//img[contains(@src, '{IMG_DESCARGA}')]]"
@@ -215,10 +226,19 @@ class PortalPreciaSelenium(PortalRFL):
         except PortalError:
             raise
         except Exception as e:  # noqa: BLE001
-            self._screenshot(driver, "portal_error")
-            raise PortalError(f"Error inesperado en el portal: {e}") from e
+            self._screenshot(driver, f"portal_error_{self._etapa_actual}")
+            raise PortalError(
+                f"Error en la etapa '{self._etapa_actual}' del portal: "
+                f"{type(e).__name__}: {e}"
+            ) from e
         finally:
             driver.quit()
+
+    def _etapa(self, nombre: str) -> None:
+        """Marca la etapa actual (para logs y para el nombre del screenshot de error)."""
+        self._etapa_actual = nombre
+        if self.logger:
+            self.logger.info("portal_etapa", extra={"etapa": nombre})
 
     def _seleccionar_fecha(self, driver, wait, fecha: datetime) -> None:
         """Selecciona ``fecha`` en el datepicker inline de PrimeFaces.
