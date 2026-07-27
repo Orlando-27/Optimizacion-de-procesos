@@ -159,11 +159,16 @@ falta inspeccionar `Informacion Impugnacion.xlsm`, entender qué lee y cómo arm
 - **Portal — login:** ✅ selectores **confirmados** contra el DOM real de
   `wp-login.php` (`#user_login`/`log`, `#user_pass`/`pwd`, `#wp-submit`) y URLs
   base (`/servicios/`, `/servicios-renta-fija/`).
-- **Portal — descarga:** ⏳ la ruta *Área de clientes → Archivos RFL → fecha →
-  descarga* está **detrás del login**; sus selectores se capturan con
-  `scripts/explorar_portal.py` (con credenciales) y se pegan en `portal_precia.py`
-  (bloque `SELECTORES A VERIFICAR`). Requiere tu equipo + credenciales + portal
-  en vivo; **no es testeable desde este sandbox**.
+- **Portal — descarga:** ✅ **cableada** contra el DOM real. La app de archivos
+  es JSF/PrimeFaces dentro de un iframe (`#BranderFrame`); el proceso: entra al
+  área de clientes → clic en `#arlo` → entra al iframe → selecciona la fecha en
+  el datepicker → ubica la fila `SX{MMDDYY}` (extensión `.001`) → clic en su
+  descarga → espera el archivo. Falta **verificarla corriéndola** en tu equipo
+  con credenciales (no es ejecutable desde el sandbox):
+  ```
+  python -m procesos.impugnacion_rfl.process --entorno test --paso 3 \
+      --portal selenium --fecha AAAA-MM-DD    # un dia habil con archivos
+  ```
 - **Nombre/extensión exactos del archivo `SXMMDDYY`** — confirmar al descargar.
 - **Ruta UNC real** que corresponde a `M:` — reemplazar `SERVIDOR` en `config.yaml`.
 - **Lista real de destinatarios/CC** — confirmar los correos en `config.yaml`.

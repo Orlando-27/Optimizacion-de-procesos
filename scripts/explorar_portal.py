@@ -21,8 +21,8 @@ Modos:
   VOLCAR (headless / Cloud Shell): igual pero sin ventana.
         python scripts/explorar_portal.py --volcar
 
-Pega lo capturado (o pasame el HTML) para cablear SEL_SELECTOR_FECHA y
-SEL_LINK_DESCARGA en procesos/impugnacion_rfl/portal_precia.py.
+NOTA: los selectores de descarga YA quedaron confirmados y cableados en
+portal_precia.py. Este script se conserva para re-capturar si el portal cambia.
 """
 
 from __future__ import annotations

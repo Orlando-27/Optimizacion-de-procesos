@@ -56,17 +56,23 @@ URL_ARCHIVOS_XHTML = (
     + "/Infovalmer-web/faces/security/RentaFija/archivosValoracionRentaFija.xhtml"
 )
 
-# ===========================================================================
-# === SELECTORES A VERIFICAR ===  (DENTRO del iframe BranderFrame, en la
-#     pagina archivosValoracionRentaFija.xhtml: capturar con explorar_portal) =
-# ===========================================================================
-SEL_SELECTOR_FECHA = "TODO: control de fecha dentro del iframe"
-SEL_LINK_DESCARGA = "TODO: enlace/boton de descarga del archivo SXMMDDYY dentro del iframe"
-# ===========================================================================
+# --- Dentro del iframe (app JSF PrimeFaces): CONFIRMADO contra el DOM real ---
+# Tabla de archivos (id JSF estable, nombrado por el desarrollador):
+SEL_TABLA_ARCHIVOS = "form:TablaValoracionRentaFija"
+# Calendario inline de PrimeFaces (clase estable):
+SEL_DATEPICKER = ".ui-datepicker-calendar"
+SEL_DIA_HOY = ".ui-datepicker-today a"                  # celda del dia de hoy
+# Cada fila: <tr data-rk="SX072626.001"> con un <a> de descarga (img descargar.png).
+IMG_DESCARGA = "descargar"                              # substring del src de la imagen
+EXT_ARCHIVO = ".001"                                    # extension real del plano
 
 
 def nombre_archivo_esperado(fecha: datetime) -> str:
-    """Nombre del plano segun el patron SXMMDDYY (visto en el correo)."""
+    """Nombre base del plano segun el patron SXMMDDYY (sin extension).
+
+    El portal lo publica como SX{MMDDYY}.001 (p. ej. SX072626.001 para el
+    26/07/2026). Aqui devolvemos el prefijo 'SX072626' para buscar la fila.
+    """
     return f"SX{fecha:%m%d%y}"
 
 
@@ -162,35 +168,50 @@ class PortalPreciaSelenium(PortalRFL):
         from selenium.webdriver.support.ui import WebDriverWait
         from selenium.webdriver.support import expected_conditions as EC
 
-        # Guardia: no intentar con selectores TODO sin confirmar.
-        pendientes = [s for s in (SEL_MENU_SERVICIOS, SEL_LINK_DESCARGA) if s.startswith("TODO")]
-        if pendientes:
-            raise PortalError(
-                "Selectores del portal sin confirmar. Correr "
-                "scripts/explorar_portal.py y completar el bloque "
-                "'SELECTORES A VERIFICAR' en portal_precia.py."
-            )
-
         carpeta_destino = Path(carpeta_destino)
+        objetivo = nombre_archivo_esperado(fecha)  # p.ej. SX072626
         driver = self._nuevo_driver(carpeta_destino, headless)
         try:
+            self._forzar_descarga_dir(driver, carpeta_destino)
             wait = WebDriverWait(driver, self.timeout_seg)
 
-            # --- Login (CONFIRMADO) ---
+            # 1) Login (CONFIRMADO)
             self.login(driver, wait, usuario, clave)
 
-            # --- Navegacion hasta el archivo del dia ---
-            # PENDIENTE: cablear con los selectores capturados tras el login
-            # (bloque SELECTORES A VERIFICAR). Preferir URL_AREA_CLIENTES si existe:
-            #   driver.get(URL_AREA_CLIENTES)
-            #   driver.find_element(By.CSS_SELECTOR, SEL_ARCHIVOS_RFL).click()
-            #   # seleccionar la fecha de hoy en SEL_SELECTOR_FECHA
-            #   driver.find_element(By.CSS_SELECTOR, SEL_LINK_DESCARGA).click()
-            #   return self._esperar_descarga(carpeta_destino, tam_minimo)
-            raise PortalError(
-                "Navegacion/descarga pendiente de cablear con selectores reales "
-                "(capturarlos con scripts/explorar_portal.py usando credenciales)."
+            # 2) Area de clientes -> boton 'Archivos Renta Fija Local' (#arlo)
+            driver.get(URL_AREA_CLIENTES)
+            wait.until(lambda d: d.execute_script("return document.readyState") == "complete")
+            wait.until(EC.element_to_be_clickable((By.CSS_SELECTOR, SEL_BTN_ARCHIVOS_RFL))).click()
+
+            # 3) Entrar al iframe con la app JSF (Infovalmer-web)
+            wait.until(EC.frame_to_be_available_and_switch_to_it((By.ID, IFRAME_CONTENIDO)))
+            wait.until(EC.presence_of_element_located((By.ID, SEL_TABLA_ARCHIVOS)))
+
+            # 4) Seleccionar la fecha objetivo en el calendario inline
+            self._seleccionar_fecha(driver, wait, fecha)
+
+            # 5) Ubicar la fila del archivo SX{MMDDYY} y hacer clic en su descarga
+            xpath_link = (
+                f"//tr[starts-with(@data-rk, '{objetivo}')]"
+                f"//a[.//img[contains(@src, '{IMG_DESCARGA}')]]"
             )
+            try:
+                link = wait.until(EC.element_to_be_clickable((By.XPATH, xpath_link)))
+            except Exception as e:  # noqa: BLE001
+                self._screenshot(driver, "archivo_no_encontrado")
+                raise PortalError(
+                    f"No se encontro el archivo {objetivo}.001 para la fecha "
+                    f"{fecha:%d/%m/%Y} (¿aun no publicado?)."
+                ) from e
+
+            antes = self._archivos_en(carpeta_destino)
+            link.click()
+
+            # 6) Esperar a que la descarga aparezca y quede estable
+            ruta = self._esperar_descarga(carpeta_destino, antes)
+            if self.logger:
+                self.logger.info("portal_descarga_ok", extra={"ruta": str(ruta)})
+            return ruta
         except PortalError:
             raise
         except Exception as e:  # noqa: BLE001
@@ -199,13 +220,59 @@ class PortalPreciaSelenium(PortalRFL):
         finally:
             driver.quit()
 
-    def _esperar_descarga(self, carpeta: Path, tam_minimo: int = 1024) -> Path:
-        """Espera a que aparezca un archivo estable (sin .crdownload) y > umbral."""
+    def _seleccionar_fecha(self, driver, wait, fecha: datetime) -> None:
+        """Selecciona ``fecha`` en el datepicker inline de PrimeFaces.
+
+        Caso normal (correr el mismo dia): la celda de hoy tiene la clase
+        ``ui-datepicker-today``. Para otra fecha del mes visible, se hace clic
+        en el numero de dia. La seleccion dispara un ajax que recarga la tabla.
+        """
+        from selenium.webdriver.common.by import By
+        from selenium.webdriver.support import expected_conditions as EC
+
+        dia = str(fecha.day)
+        # Dia dentro del mes visible, no deshabilitado ni de otro mes.
+        xpath_dia = (
+            "//table[contains(@class,'ui-datepicker-calendar')]"
+            "//td[not(contains(@class,'ui-state-disabled')) "
+            "and not(contains(@class,'other-month'))]"
+            f"/a[normalize-space(text())='{dia}']"
+        )
+        try:
+            celda = wait.until(EC.element_to_be_clickable((By.XPATH, xpath_dia)))
+            celda.click()
+            time.sleep(2)  # dar tiempo al ajax que recarga la tabla
+        except Exception:  # noqa: BLE001
+            # Si el calendario ya trae la fecha correcta por defecto, seguir.
+            if self.logger:
+                self.logger.warning(
+                    "datepicker_sin_click",
+                    extra={"detalle": f"No se pudo clicar el dia {dia}; se usa la fecha por defecto."},
+                )
+
+    @staticmethod
+    def _archivos_en(carpeta: Path) -> set[str]:
+        return {p.name for p in Path(carpeta).iterdir() if p.is_file()}
+
+    def _forzar_descarga_dir(self, driver, carpeta: Path) -> None:
+        """Refuerza la carpeta de descarga via CDP (necesario en headless)."""
+        try:
+            driver.execute_cdp_cmd(
+                "Page.setDownloadBehavior",
+                {"behavior": "allow", "downloadPath": str(Path(carpeta).resolve())},
+            )
+        except Exception:  # noqa: BLE001
+            pass
+
+    def _esperar_descarga(self, carpeta: Path, antes: set[str], tam_minimo: int = 1) -> Path:
+        """Espera un archivo NUEVO, estable (sin .crdownload/.tmp) y > umbral."""
         fin = time.time() + self.timeout_seg
         while time.time() < fin:
-            candidatos = [p for p in carpeta.iterdir()
-                          if p.is_file() and not p.name.endswith(".crdownload")]
-            for p in candidatos:
+            for p in Path(carpeta).iterdir():
+                if not p.is_file() or p.name in antes:
+                    continue
+                if p.name.endswith((".crdownload", ".tmp")):
+                    continue
                 if p.stat().st_size >= tam_minimo:
                     return p
             time.sleep(1)

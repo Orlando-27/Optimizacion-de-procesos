@@ -36,6 +36,7 @@ def ejecutar(
     store: Optional[RunStore] = None,
     secretos: tuple[Optional[str], ...] = (),
     notificar_fallo: bool = True,
+    extra: Optional[dict] = None,
 ) -> ProcessResult:
     """Orquesta una corrida completa y devuelve el resultado ya persistido."""
     run_id = nuevo_run_id(proceso.process_id)
@@ -58,6 +59,7 @@ def ejecutar(
         disparado_por=disparado_por,
         dry_run=dry_run,
         paso_aislado=paso_aislado,
+        extra=extra or {},
     )
 
     store = store or RunStore()

@@ -72,7 +72,9 @@ class ImpugnacionRFL(Proceso):
     def extract(self, ctx: ProcessContext) -> dict[str, Any]:
         self._sincronizar_logger(ctx)
         cfg: Config = ctx.config
-        hoy = datetime.now()
+        # Permite forzar la fecha (util para probar la descarga con un dia que
+        # ya tenga archivos publicados). Por defecto, hoy.
+        hoy = ctx.extra.get("fecha_override") or datetime.now()
 
         # (Validacion 1) Dia habil -> si no, SKIPPED sin alertar.
         if not val.es_dia_habil(hoy.date()):
@@ -283,8 +285,16 @@ def _parse_args(argv=None) -> argparse.Namespace:
     p.add_argument("--dry-run", action="store_true", help="Corre todo pero no envia ni escribe en prod")
     p.add_argument("--paso", type=int, help="Corre un paso aislado (1..7) para depurar")
     p.add_argument("--simular-correo", type=Path, help="Usa un cuerpo de correo de archivo")
+    p.add_argument("--portal", choices=["simulado", "selenium"],
+                   help="Sobreescribe el backend del portal (probar descarga real: selenium)")
+    p.add_argument("--fecha", type=_parse_fecha,
+                   help="Forzar fecha objetivo YYYY-MM-DD (probar con un dia con archivos)")
     p.add_argument("--config", type=Path, default=RUTA_CONFIG)
     return p.parse_args(argv)
+
+
+def _parse_fecha(s: str) -> datetime:
+    return datetime.strptime(s, "%Y-%m-%d")
 
 
 def main(argv=None) -> int:
@@ -292,6 +302,9 @@ def main(argv=None) -> int:
     cfg = cargar_config(args.config)
     if args.entorno:
         cfg.entorno = args.entorno
+    if args.portal:  # override del backend del portal (p. ej. probar descarga real)
+        cfg.backend_portal[cfg.entorno] = args.portal
+    extra = {"fecha_override": args.fecha} if args.fecha else {}
 
     # Idempotencia (seccion 7): si ya hubo SUCCESS hoy -> SKIPPED.
     store = RunStore()
@@ -305,7 +318,7 @@ def main(argv=None) -> int:
         run_id = nuevo_run_id(ImpugnacionRFL.process_id)
         logger = configurar_logging(run_id, ImpugnacionRFL.process_id, Path("logs"))
         proceso = construir_proceso(cfg, logger=logger, ruta_simular_correo=args.simular_correo)
-        return _correr_paso(proceso, cfg, logger, args)
+        return _correr_paso(proceso, cfg, logger, args, extra)
 
     # Ruta normal: el runner crea el logger/run_id y el proceso lo propaga a
     # sus adaptadores (ver _sincronizar_logger).
@@ -314,19 +327,20 @@ def main(argv=None) -> int:
         proceso, cfg, trigger="cli",
         disparado_por="cli", dry_run=args.dry_run, store=store,
         secretos=tuple(x for x in (secretos_del_portal() + secretos_smtp(cfg.entorno)) if x),
+        extra=extra,
     )
     print(f"STATUS: {res.status.value} | duracion={res.duracion_seg}s | {res.mensaje}")
     # exit code: 0 si SUCCESS/SKIPPED/WAITING, 1 si fallo (para el Programador de Tareas).
     return 0 if res.status in (RunStatus.SUCCESS, RunStatus.SKIPPED, RunStatus.WAITING) else 1
 
 
-def _correr_paso(proceso: ImpugnacionRFL, cfg: Config, logger, args) -> int:
+def _correr_paso(proceso: ImpugnacionRFL, cfg: Config, logger, args, extra=None) -> int:
     """Ejecuta un paso aislado para depuracion (--paso N)."""
     ctx = ProcessContext(
         run_id="paso-aislado", process_id=ImpugnacionRFL.process_id,
         process_version=ImpugnacionRFL.process_version, entorno=cfg.entorno,
         config=cfg, logger=logger, trigger="cli-paso", dry_run=args.dry_run,
-        paso_aislado=args.paso,
+        paso_aislado=args.paso, extra=extra or {},
     )
     try:
         if args.paso in (1, 2, 3):
@@ -350,6 +364,12 @@ def _correr_paso(proceso: ImpugnacionRFL, cfg: Config, logger, args) -> int:
     except PasoPendienteError as e:
         print(f"PASO PENDIENTE: {e}")
         return 3
+    except ProcesoSkip as e:
+        print(f"SKIPPED: {e} (usar --fecha con un dia habil que tenga archivos).")
+        return 0
+    except ProcesoEsperando as e:
+        print(f"WAITING: {e}")
+        return 0
 
 
 if __name__ == "__main__":
