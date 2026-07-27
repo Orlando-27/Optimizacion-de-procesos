@@ -1,35 +1,35 @@
-"""Explorador del portal de Precia para capturar los selectores post-login.
+"""Explorador del portal de Precia para capturar los selectores de descarga.
 
-El LOGIN ya esta confirmado (#user_login/#user_pass/#wp-submit). Falta capturar
-lo que esta DETRAS del login: Area de clientes renta fija > Archivos Renta Fija
-Local > selector de fecha > boton de descarga.
+Estado confirmado (2026-07):
+  - Login WordPress: #user_login / #user_pass / #wp-submit  (OK)
+  - Area de clientes RF: https://www.precia.co/index.php/renta-fija/
+  - Esa pagina embebe una app JSF en un iframe (#BranderFrame) servida desde
+    otra IP. El boton "Archivos Renta Fija Local" es #arlo y carga en el iframe
+    la pagina archivosValoracionRentaFija.xhtml.
 
-Dos modos:
+Lo que falta capturar esta DENTRO del iframe: el control de fecha y el enlace de
+descarga del archivo SXMMDDYY. Por eso este script, ademas de la pagina, VUELCA
+el contenido de cada iframe.
 
-  1. HEADED (equipo con pantalla): abre Chrome visible y pausa para que con
-     DevTools (F12) copies los selectores.
-        python scripts/explorar_portal.py
+Modos:
+  HEADED (Windows/Anaconda con pantalla): abre Chrome visible, hace login,
+  navega al area de clientes y hace clic en "Archivos Renta Fija Local". Tu
+  seleccionas la fecha de hoy si hace falta y presionas ENTER; se guarda el HTML
+  del iframe (la pagina de descarga).
+        python scripts\\explorar_portal.py
 
-  2. VOLCAR (Cloud Shell / sin pantalla): headless. Hace login y GUARDA el HTML
-     y un screenshot de cada pagina en logs/, e imprime los enlaces candidatos.
-     Con eso se extraen los selectores sin DevTools. Se puede profundizar
-     pasando --url de una pagina que hayas descubierto en el volcado anterior.
+  VOLCAR (headless / Cloud Shell): igual pero sin ventana.
         python scripts/explorar_portal.py --volcar
-        python scripts/explorar_portal.py --volcar --url "https://www.precia.co/.../archivos"
 
-Pega lo capturado en el bloque `# === SELECTORES A VERIFICAR ===` de
-procesos/impugnacion_rfl/portal_precia.py.
-
-Setup en Cloud Shell (una vez por sesion):
-    sudo apt-get update && sudo apt-get install -y chromium chromium-driver
-    export CHROME_BINARY=/usr/bin/chromium
-    export CHROMEDRIVER_PATH=/usr/bin/chromedriver
+Pega lo capturado (o pasame el HTML) para cablear SEL_SELECTOR_FECHA y
+SEL_LINK_DESCARGA en procesos/impugnacion_rfl/portal_precia.py.
 """
 
 from __future__ import annotations
 
 import argparse
 import sys
+import time
 from datetime import datetime
 from pathlib import Path
 
@@ -40,46 +40,61 @@ if str(RAIZ) not in sys.path:
 LOGS = RAIZ / "logs"
 
 
-def _dump(driver, etiqueta: str) -> None:
-    """Guarda page_source + screenshot + lista de enlaces candidatos."""
+def _guardar(driver, etiqueta: str, ts: str) -> None:
+    """Guarda page_source + screenshot + enlaces candidatos de la vista actual."""
     from selenium.webdriver.common.by import By
 
     LOGS.mkdir(parents=True, exist_ok=True)
-    ts = datetime.now().strftime("%H%M%S")
     base = LOGS / f"portal_{etiqueta}_{ts}"
-    (base.with_suffix(".html")).write_text(driver.page_source, encoding="utf-8", errors="replace")
+    base.with_suffix(".html").write_text(driver.page_source, encoding="utf-8", errors="replace")
     try:
         driver.save_screenshot(str(base.with_suffix(".png")))
     except Exception:  # noqa: BLE001
         pass
     print(f"\n=== {etiqueta} | {driver.current_url}")
     print(f"    HTML: {base.with_suffix('.html')}")
-    print(f"    PNG : {base.with_suffix('.png')}")
-    print("    Enlaces candidatos (texto -> href):")
-    vistos = set()
-    for a in driver.find_elements(By.CSS_SELECTOR, "a[href]"):
-        txt = (a.text or "").strip()
+    print("    Candidatos (texto -> href / id):")
+    for a in driver.find_elements(By.CSS_SELECTOR, "a[href], button, input[type=submit]"):
+        txt = (a.text or a.get_attribute("value") or "").strip()
         href = a.get_attribute("href") or ""
-        clave = (txt + href).lower()
-        if href in vistos:
-            continue
-        if any(k in clave for k in ("cliente", "archivo", "renta", "local", "descarg", "area", ".xls", ".csv", ".zip", "download")):
-            vistos.add(href)
-            print(f"      {txt[:40]!r:44} -> {href}")
+        ident = a.get_attribute("id") or ""
+        clave = (txt + href + ident).lower()
+        if any(k in clave for k in ("archivo", "descarg", "download", ".xls", ".csv",
+                                    ".zip", ".txt", "fecha", "sx", "buscar", "consultar")):
+            print(f"      {txt[:34]!r:38} id={ident!r:16} -> {href[:70]}")
+
+
+def _dump_todo(driver, etiqueta: str) -> None:
+    """Vuelca la pagina principal y el contenido de cada iframe."""
+    from selenium.webdriver.common.by import By
+
+    ts = datetime.now().strftime("%H%M%S")
+    _guardar(driver, etiqueta, ts)
+    frames = driver.find_elements(By.TAG_NAME, "iframe")
+    print(f"\n>> {len(frames)} iframe(s) detectado(s); volcando su contenido...")
+    for i, fr in enumerate(frames):
+        fid = (fr.get_attribute("id") or fr.get_attribute("name") or f"f{i}")
+        try:
+            driver.switch_to.frame(fr)
+            _guardar(driver, f"{etiqueta}_iframe_{fid}", ts)
+        except Exception as e:  # noqa: BLE001
+            print(f"   (no se pudo entrar al iframe {fid}: {e})")
+        finally:
+            driver.switch_to.default_content()
 
 
 def main() -> int:
     p = argparse.ArgumentParser()
     p.add_argument("--usuario")
     p.add_argument("--clave")
-    p.add_argument("--volcar", action="store_true",
-                   help="Headless: guarda HTML+screenshot+links (Cloud Shell)")
-    p.add_argument("--url", action="append", default=[],
-                   help="URL(s) extra a visitar y volcar tras el login")
+    p.add_argument("--volcar", action="store_true", help="Headless (Cloud Shell)")
     args = p.parse_args()
 
     from core.secrets import secretos_del_portal
-    from procesos.impugnacion_rfl.portal_precia import PortalPreciaSelenium, URL_RENTA_FIJA
+    from procesos.impugnacion_rfl.portal_precia import (
+        PortalPreciaSelenium, URL_AREA_CLIENTES, SEL_BTN_ARCHIVOS_RFL,
+    )
+    from selenium.webdriver.common.by import By
     from selenium.webdriver.support.ui import WebDriverWait
 
     usuario = args.usuario or secretos_del_portal()[0]
@@ -96,31 +111,31 @@ def main() -> int:
         portal.login(driver, wait, usuario, clave)
         print(">> Login OK:", driver.current_url)
 
-        if args.volcar:
-            _dump(driver, "post_login")
-            driver.get(URL_RENTA_FIJA)
-            wait.until(lambda d: d.execute_script("return document.readyState") == "complete")
-            _dump(driver, "renta_fija")
-            for i, u in enumerate(args.url):
-                driver.get(u)
-                wait.until(lambda d: d.execute_script("return document.readyState") == "complete")
-                _dump(driver, f"url{i}")
-            print("\n>> Volcado completo. Revisa los .html/.png en logs/ y pasame")
-            print("   los selectores (o el HTML) para cablear la descarga.")
-        else:
-            driver.get(URL_RENTA_FIJA)
+        print(">> Entrando al area de clientes RF...")
+        driver.get(URL_AREA_CLIENTES)
+        wait.until(lambda d: d.execute_script("return document.readyState") == "complete")
+
+        # Clic en "Archivos Renta Fija Local" (#arlo) -> carga el iframe.
+        try:
+            btn = wait.until(lambda d: d.find_element(By.CSS_SELECTOR, SEL_BTN_ARCHIVOS_RFL))
+            btn.click()
+            print(">> Clic en 'Archivos Renta Fija Local'. Esperando el iframe...")
+            time.sleep(6)
+        except Exception as e:  # noqa: BLE001
+            print(f">> No pude hacer clic en {SEL_BTN_ARCHIVOS_RFL} automaticamente: {e}")
+            print("   Haz clic tu en 'Archivos Renta Fija Local' en la ventana de Chrome.")
+
+        if not args.volcar:
             print("\n" + "=" * 64)
-            print(" En la ventana de Chrome que se abrio, navega a mano hasta:")
-            print("   Area de clientes renta fija > Archivos Renta Fija Local")
-            print("   > (deja a la vista la lista de fechas / el boton de descarga)")
-            print(" NO cierres Chrome. Cuando la pagina de descarga este a la vista,")
-            print(" vuelve aqui y presiona ENTER: guardare el HTML y un screenshot.")
+            print(" En el Chrome: si aparece un control de FECHA, selecciona la de HOY")
+            print(" para que se muestre el archivo del dia. Cuando veas el enlace/boton")
+            print(" de descarga (o la tabla con el archivo SXMMDDYY), vuelve aqui.")
             print("=" * 64)
-            input("\n>> ENTER cuando estes en la pagina de Archivos RFL...")
-            # Vuelca la pagina EXACTA donde el usuario navego (la de la descarga).
-            _dump(driver, "pagina_descarga")
-            print("\n>> Guardado. Pasame el archivo logs\\portal_pagina_descarga_*.html")
-            print("   (y el .png si quieres) para extraer los selectores.")
+            input("\n>> ENTER para capturar la pagina + el iframe...")
+
+        _dump_todo(driver, "archivos")
+        print("\n>> Listo. Pasame los archivos logs\\portal_archivos_iframe_*.html")
+        print("   (y el .png). De ahi saco el selector de fecha y el de descarga.")
     finally:
         driver.quit()
     return 0

@@ -41,18 +41,27 @@ SEL_LOGIN_CLAVE = "input#user_pass"          # WordPress: campo 'pwd'
 SEL_LOGIN_BOTON = "input#wp-submit"
 SEL_LOGIN_ERROR = "#login_error"             # mensaje de credenciales invalidas
 
+# --- Area de clientes: CONFIRMADO contra el DOM real (2026-07) ---
+# Tras el login de WordPress, el area de clientes RF vive aqui:
+URL_AREA_CLIENTES = "https://www.precia.co/index.php/renta-fija/"
+# Esa pagina embebe una app JSF (Infovalmer-web) en un iframe, servida desde
+# otro host (la "ip transaccional"). El menu lateral son <button> que cambian
+# el src del iframe. El de "Archivos Renta Fija Local" es #arlo.
+IP_TRANSACCIONAL = "https://52.72.176.166:8443"
+IFRAME_CONTENIDO = "BranderFrame"                       # id/name del iframe
+SEL_BTN_ARCHIVOS_RFL = "#arlo"                          # boton 'Archivos Renta Fija Local'
+SEL_BTN_ARCHIVOS_INTL = "#arin"                         # 'Archivos Renta Fija Internacional'
+URL_ARCHIVOS_XHTML = (
+    IP_TRANSACCIONAL
+    + "/Infovalmer-web/faces/security/RentaFija/archivosValoracionRentaFija.xhtml"
+)
+
 # ===========================================================================
-# === SELECTORES A VERIFICAR ===  (detras del login: capturar con
-#     scripts/explorar_portal.py usando credenciales reales)                 ==
+# === SELECTORES A VERIFICAR ===  (DENTRO del iframe BranderFrame, en la
+#     pagina archivosValoracionRentaFija.xhtml: capturar con explorar_portal) =
 # ===========================================================================
-# URL directa del area de clientes RF si existe (preferible a navegar por menu).
-URL_AREA_CLIENTES = "TODO: URL de 'Area de clientes renta fija' (tras login)"
-SEL_MENU_SERVICIOS = "TODO: selector de 'Servicios'"
-SEL_MENU_RENTA_FIJA = "TODO: selector de 'Renta Fija'"
-SEL_AREA_CLIENTES = "TODO: selector de 'Area de clientes renta fija'"
-SEL_ARCHIVOS_RFL = "TODO: selector de 'Archivos Renta Fija Local'"
-SEL_SELECTOR_FECHA = "TODO: selector del control de fecha"
-SEL_LINK_DESCARGA = "TODO: selector del enlace/boton de descarga del archivo del dia"
+SEL_SELECTOR_FECHA = "TODO: control de fecha dentro del iframe"
+SEL_LINK_DESCARGA = "TODO: enlace/boton de descarga del archivo SXMMDDYY dentro del iframe"
 # ===========================================================================
 
 
