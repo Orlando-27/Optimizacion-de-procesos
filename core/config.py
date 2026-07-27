@@ -53,6 +53,9 @@ class CorreoSalidaCfg(BaseModel):
     destinatarios: dict[str, list[str]]
     cc: dict[str, list[str]] = Field(default_factory=lambda: {"test": [], "prod": []})
     plantilla: str = "plantillas/cuerpo_correo.html"
+    # Cuenta remitente (Outlook COM): fuerza enviar DESDE esta cuenta si el
+    # Outlook del equipo tiene varias. Vacio = cuenta por defecto de Outlook.
+    remitente: str | None = None
 
 
 class ExcelCfg(BaseModel):

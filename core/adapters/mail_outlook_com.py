@@ -24,8 +24,9 @@ _OL_FOLDER_INBOX = 6
 
 
 class MailOutlookCom(MailClient):
-    def __init__(self, logger=None) -> None:
+    def __init__(self, logger=None, remitente: str | None = None) -> None:
         self.logger = logger
+        self.remitente = remitente  # SMTP de la cuenta desde la que enviar
         try:
             import win32com.client  # type: ignore
         except Exception as e:  # noqa: BLE001
@@ -36,6 +37,16 @@ class MailOutlookCom(MailClient):
         self._win32com = win32com.client
         self._app = win32com.client.Dispatch("Outlook.Application")
         self._mapi = self._app.GetNamespace("MAPI")
+
+    def _cuenta_por_smtp(self, smtp: str):
+        """Devuelve la Account de Outlook cuyo SMTP coincide, o None."""
+        try:
+            for cuenta in self._app.Session.Accounts:
+                if str(getattr(cuenta, "SmtpAddress", "")).lower() == smtp.lower():
+                    return cuenta
+        except Exception:  # noqa: BLE001
+            pass
+        return None
 
     def buscar_correo_precia(
         self,
@@ -103,6 +114,19 @@ class MailOutlookCom(MailClient):
         mail.HTMLBody = cuerpo_html
         for ad in adjuntos:
             mail.Attachments.Add(str(Path(ad).resolve()))
+        # Forzar la cuenta remitente si se configuro (Outlook con varias cuentas).
+        if self.remitente:
+            cuenta = self._cuenta_por_smtp(self.remitente)
+            if cuenta is not None:
+                try:
+                    mail.SendUsingAccount = cuenta
+                except Exception:  # noqa: BLE001
+                    pass
+            else:
+                try:
+                    mail.SentOnBehalfOfName = self.remitente
+                except Exception:  # noqa: BLE001
+                    pass
         if enviar_de_verdad:
             mail.Send()
             self._log("correo_enviado", f"Outlook envio a {len(destinatarios)} dest.")

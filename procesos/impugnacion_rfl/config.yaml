@@ -22,8 +22,11 @@ correo_entrada:
 
 correo_salida:
   asunto: "Publicación Renta Fija Local - Archivo Impugnación RFL"
+  # Cuenta remitente en el Outlook de la oficina (fuerza el envio DESDE aqui):
+  remitente: "jbobadilla@colfondos.com.co"
   destinatarios:
-    test: ["joseorlando202014@gmail.com"]
+    # En test se envia a uno mismo para verificar (cambiar luego por la lista real):
+    test: ["jbobadilla@colfondos.com.co"]
     # Lista real vista en el correo de salida (confirmar antes de pasar a prod):
     prod:
       - "jhon.guevara@colfondos.com.co"           # <TODO confirmar correo exacto>
@@ -48,11 +51,13 @@ excel:
   timeout_seg: 300
 
 # Backend de I/O por entorno (se pueden sobreescribir aqui).
+# OFICINA (Outlook de escritorio corporativo): outlook_com en test y prod.
+# En un equipo SIN Outlook (p. ej. casa), poner test: "simulado" para probar.
 backend_correo:
-  test: "simulado"      # simulado | smtp_imap | outlook_com
-  prod: "smtp_imap"     # en prod: smtp_imap (portable) u outlook_com (Windows)
+  test: "outlook_com"   # simulado | smtp_imap | outlook_com
+  prod: "outlook_com"   # en la oficina el remitente es el Outlook de jbobadilla
 backend_portal:
-  test: "simulado"      # simulado | selenium
+  test: "simulado"      # simulado | selenium  (para descarga real: --portal selenium)
   prod: "selenium"
 
 portal:

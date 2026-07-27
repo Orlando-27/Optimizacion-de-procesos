@@ -22,12 +22,15 @@ muy corta**. Si los precios tienen error y no se reporta a tiempo, quedan en fir
 | # | Paso manual | Estado |
 |---|---|---|
 | 1 | Llega el correo detonante de Precia (`atencionalcliente@precia.co`, asunto *Publicación Renta Fija Local*), con las **ventanas de impugnación del día** en el cuerpo | ✅ |
-| 2 | Login al portal `www.precia.co` (WordPress) | ✅ (código listo, faltan selectores reales) |
-| 3 | Descargar el archivo `SXMMDDYY` (Servicios → Renta Fija → Área de clientes → Archivos RFL → fecha) | ✅ (código listo, faltan selectores reales) |
+| 2 | Login al portal `www.precia.co` (WordPress) | ✅ **Probado** |
+| 3 | Descargar el archivo `SXMMDDYY.001` (Servicios → Renta Fija → Área de clientes → Archivos RFL → fecha) | ✅ **Probado** (descarga real, ~40–80 MB) |
 | 4 | Guardar el archivo en la carpeta **INFOVALMER** | ✅ |
 | 5 | **Correr la macro** `Informacion Impugnacion.xlsm` sobre el archivo | ⏳ **PENDIENTE** |
 | 6 | La macro genera `Renta Fija.xlsx` | ⏳ (depende del paso 5) |
-| 7 | Enviar el correo con `Renta Fija.xlsx` adjunto y los horarios reinyectados | ✅ |
+| 7 | Enviar el correo con `Renta Fija.xlsx` adjunto y los horarios reinyectados | ✅ (Outlook COM; falta probarlo en la oficina) |
+
+> **Envío en la oficina:** el origen es el **Outlook de escritorio corporativo**
+> (`jbobadilla@colfondos.com.co`) vía COM. Ver [`CONTINUAR_EN_OFICINA.md`](../../CONTINUAR_EN_OFICINA.md).
 
 ---
 

@@ -258,7 +258,7 @@ def construir_proceso(
         mail = MailSmtpImap(usuario=usuario or "", clave=clave or "", logger=logger)
     elif backend == "outlook_com":
         from core.adapters.mail_outlook_com import MailOutlookCom
-        mail = MailOutlookCom(logger=logger)
+        mail = MailOutlookCom(logger=logger, remitente=cfg.correo_salida.remitente)
     else:
         raise ValueError(f"backend_correo desconocido: {backend}")
 
