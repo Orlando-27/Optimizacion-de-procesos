@@ -1,17 +1,23 @@
-"""Explorador headed del portal de Precia para capturar los selectores reales.
+"""Explorador headed del portal de Precia para capturar los selectores post-login.
 
-Abre Chrome VISIBLE, hace el login y PAUSA para que navegues a mano la ruta
-Servicios > Renta Fija > Area de clientes > Archivos Renta Fija Local, y con las
-DevTools (F12) copies los selectores CSS de cada elemento. Luego pegalos en el
-bloque `# === SELECTORES A VERIFICAR ===` de procesos/impugnacion_rfl/portal_precia.py.
+El LOGIN ya esta confirmado (campos #user_login/#user_pass/#wp-submit). Lo que
+falta capturar esta DETRAS del login: Area de clientes renta fija > Archivos
+Renta Fija Local > selector de fecha > boton de descarga.
+
+Este script:
+  1. Abre Chrome VISIBLE y hace login con tus credenciales (de .env/keyring o --usuario/--clave).
+  2. Navega a la seccion de Renta Fija.
+  3. Vuelca los enlaces/candidatos que ve para ayudarte a identificar la ruta.
+  4. PAUSA para que con DevTools (F12) copies los selectores CSS exactos.
+
+Pega lo capturado en el bloque `# === SELECTORES A VERIFICAR ===` de
+procesos/impugnacion_rfl/portal_precia.py (URL_AREA_CLIENTES, SEL_ARCHIVOS_RFL,
+SEL_SELECTOR_FECHA, SEL_LINK_DESCARGA).
 
 Uso:
-  # credenciales via .env / keyring (recomendado):
   python scripts/explorar_portal.py
-  # o pasandolas explicitamente (evitar en equipos compartidos):
-  python scripts/explorar_portal.py --usuario XXX --clave YYY
-
-Requiere: pip install selenium  (y un Chrome/Chromedriver disponible).
+  # con Chromium portable (Linux/sandbox):
+  CHROME_BINARY=/ruta/chrome CHROMEDRIVER_PATH=/ruta/chromedriver python scripts/explorar_portal.py
 """
 
 from __future__ import annotations
@@ -29,43 +35,54 @@ def main() -> int:
     p = argparse.ArgumentParser()
     p.add_argument("--usuario")
     p.add_argument("--clave")
-    p.add_argument("--url", default="https://www.precia.co/wp-login.php")
+    p.add_argument("--headless", action="store_true",
+                   help="Correr sin ventana (para diagnostico; para capturar usar headed)")
     args = p.parse_args()
 
     from core.secrets import secretos_del_portal
+    from procesos.impugnacion_rfl.portal_precia import (
+        PortalPreciaSelenium, URL_RENTA_FIJA,
+    )
+    from selenium.webdriver.common.by import By
+    from selenium.webdriver.support.ui import WebDriverWait
+
     usuario = args.usuario or secretos_del_portal()[0]
     clave = args.clave or secretos_del_portal()[1]
     if not (usuario and clave):
         print("Faltan credenciales. Usar .env/keyring o --usuario/--clave.")
         return 1
 
-    from selenium import webdriver
-    from selenium.webdriver.chrome.options import Options
-    from selenium.webdriver.common.by import By
-
-    opts = Options()
-    opts.add_argument("--start-maximized")
-    driver = webdriver.Chrome(options=opts)  # headed a proposito
+    portal = PortalPreciaSelenium(timeout_seg=60)
+    driver = portal._nuevo_driver(RAIZ / "logs", headless=args.headless)
     try:
-        driver.get(args.url)
-        # WordPress estandar: campos 'log' y 'pwd'.
-        try:
-            driver.find_element(By.ID, "user_login").send_keys(usuario)
-            driver.find_element(By.ID, "user_pass").send_keys(clave)
-            driver.find_element(By.ID, "wp-submit").click()
-        except Exception as e:  # noqa: BLE001
-            print(f"No se pudo autocompletar el login (revisar IDs): {e}")
+        wait = WebDriverWait(driver, 60)
+        print(">> Haciendo login...")
+        portal.login(driver, wait, usuario, clave)
+        print(">> Login OK. URL actual:", driver.current_url)
+
+        print(">> Navegando a Renta Fija...")
+        driver.get(URL_RENTA_FIJA)
+        wait.until(lambda d: d.execute_script("return document.readyState") == "complete")
+
+        # Volcado de candidatos: enlaces con palabras clave de la ruta.
+        print("\n=== ENLACES CANDIDATOS (texto -> href) ===")
+        for a in driver.find_elements(By.CSS_SELECTOR, "a[href]"):
+            txt = (a.text or "").strip()
+            href = a.get_attribute("href") or ""
+            clave_txt = (txt + href).lower()
+            if any(k in clave_txt for k in ("cliente", "archivo", "renta", "local", "descarg", "area")):
+                print(f"  {txt[:40]!r:44} -> {href}")
 
         print("\n" + "=" * 64)
-        print(" NAVEGADOR ABIERTO. Haz login si hace falta y navega a:")
-        print("   Servicios > Renta Fija > Area de clientes renta fija >")
-        print("   Archivos Renta Fija Local > (fecha de hoy) > descarga")
-        print(" Abre DevTools (F12) y copia el selector CSS de cada elemento.")
+        print(" NAVEGA A MANO: Area de clientes renta fija > Archivos Renta Fija")
+        print(" Local > (fecha de hoy) > descarga.")
+        print(" Con DevTools (F12) copia el selector CSS de cada elemento y")
+        print(" pegalo en portal_precia.py -> bloque SELECTORES A VERIFICAR.")
         print("=" * 64)
-        input("\n>> Cuando termines de capturar los selectores, ENTER para cerrar...")
+        if not args.headless:
+            input("\n>> ENTER para cerrar cuando termines de capturar...")
     finally:
         driver.quit()
-    print("Pega los selectores en portal_precia.py -> bloque SELECTORES A VERIFICAR.")
     return 0
 
 

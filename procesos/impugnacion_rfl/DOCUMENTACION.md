@@ -156,8 +156,14 @@ falta inspeccionar `Informacion Impugnacion.xlsm`, entender qué lee y cómo arm
 `Renta Fija.xlsx`, y reimplementarlo en `TransformadorImpugnacionPython`.
 
 ### Otros puntos parametrizados (no bloquean test, sí prod)
-- **Selectores reales del portal** — capturar con `scripts/explorar_portal.py` y
-  pegarlos en `portal_precia.py` (bloque `SELECTORES A VERIFICAR`).
+- **Portal — login:** ✅ selectores **confirmados** contra el DOM real de
+  `wp-login.php` (`#user_login`/`log`, `#user_pass`/`pwd`, `#wp-submit`) y URLs
+  base (`/servicios/`, `/servicios-renta-fija/`).
+- **Portal — descarga:** ⏳ la ruta *Área de clientes → Archivos RFL → fecha →
+  descarga* está **detrás del login**; sus selectores se capturan con
+  `scripts/explorar_portal.py` (con credenciales) y se pegan en `portal_precia.py`
+  (bloque `SELECTORES A VERIFICAR`). Requiere tu equipo + credenciales + portal
+  en vivo; **no es testeable desde este sandbox**.
 - **Nombre/extensión exactos del archivo `SXMMDDYY`** — confirmar al descargar.
 - **Ruta UNC real** que corresponde a `M:` — reemplazar `SERVIDOR` en `config.yaml`.
 - **Lista real de destinatarios/CC** — confirmar los correos en `config.yaml`.
