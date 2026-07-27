@@ -55,6 +55,14 @@ class MailOutlookCom(MailClient):
         asunto_contiene: str,
         ventana_horas: int = 6,
     ) -> Optional[Correo]:
+        """Devuelve el correo detonante del dia. EXIGE remitente Y asunto:
+
+        como del mismo remitente llegan muchos correos, un correo solo se acepta
+        si (1) el remitente coincide y (2) el asunto CONTIENE el texto esperado.
+        La comparacion de asunto es tolerante a tildes/mayusculas/espacios.
+        Como los items van ordenados por fecha descendente, se devuelve el MAS
+        RECIENTE que cumple ambas condiciones.
+        """
         inbox = self._mapi.GetDefaultFolder(_OL_FOLDER_INBOX)
         items = inbox.Items
         items.Sort("[ReceivedTime]", True)
@@ -63,15 +71,25 @@ class MailOutlookCom(MailClient):
             items = items.Restrict(f"[ReceivedTime] >= '{desde}'")
         except Exception:  # noqa: BLE001 - si Restrict falla, iteramos todo
             pass
+
+        objetivo = self._norm(asunto_contiene)
+        candidatos = 0
         for it in items:
             try:
                 asunto = str(getattr(it, "Subject", ""))
-                if asunto_contiene.lower() not in asunto.lower():
+                remitente_ok = self._remitente_coincide(it, remitente)
+                asunto_ok = objetivo in self._norm(asunto)
+                # AMBOS son obligatorios.
+                if not (remitente_ok and asunto_ok):
                     continue
-                if not self._remitente_coincide(it, remitente):
-                    continue
+                candidatos += 1
                 cuerpo = str(getattr(it, "HTMLBody", "") or getattr(it, "Body", ""))
                 es_html = bool(getattr(it, "HTMLBody", ""))
+                self._log(
+                    "correo_precia_encontrado",
+                    f"Coincide remitente+asunto: '{asunto[:70]}' "
+                    f"({getattr(it, 'ReceivedTime', '?')})",
+                )
                 return Correo(
                     asunto=asunto,
                     remitente=self._smtp_de(it) or remitente,
@@ -81,7 +99,19 @@ class MailOutlookCom(MailClient):
                 )
             except Exception:  # noqa: BLE001 - un item raro no debe tumbar la busqueda
                 continue
+        self._log("correo_precia_no_encontrado",
+                  f"Ningun correo cumple remitente '{remitente}' + asunto '{asunto_contiene}' "
+                  f"en las ultimas {ventana_horas}h.")
         return None
+
+    @staticmethod
+    def _norm(texto: str) -> str:
+        """Minusculas, sin tildes, espacios colapsados (para comparar asuntos)."""
+        import re
+        import unicodedata
+        t = unicodedata.normalize("NFKD", texto or "")
+        t = "".join(c for c in t if not unicodedata.combining(c))
+        return re.sub(r"\s+", " ", t).strip().lower()
 
     @staticmethod
     def _smtp_de(item) -> Optional[str]:
