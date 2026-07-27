@@ -109,11 +109,18 @@ def main() -> int:
             print("   los selectores (o el HTML) para cablear la descarga.")
         else:
             driver.get(URL_RENTA_FIJA)
-            print("\n" + "=" * 60)
-            print(" Navega a mano: Area de clientes > Archivos RFL > fecha > descarga.")
-            print(" Copia los selectores con DevTools (F12).")
-            print("=" * 60)
-            input("\n>> ENTER para cerrar...")
+            print("\n" + "=" * 64)
+            print(" En la ventana de Chrome que se abrio, navega a mano hasta:")
+            print("   Area de clientes renta fija > Archivos Renta Fija Local")
+            print("   > (deja a la vista la lista de fechas / el boton de descarga)")
+            print(" NO cierres Chrome. Cuando la pagina de descarga este a la vista,")
+            print(" vuelve aqui y presiona ENTER: guardare el HTML y un screenshot.")
+            print("=" * 64)
+            input("\n>> ENTER cuando estes en la pagina de Archivos RFL...")
+            # Vuelca la pagina EXACTA donde el usuario navego (la de la descarga).
+            _dump(driver, "pagina_descarga")
+            print("\n>> Guardado. Pasame el archivo logs\\portal_pagina_descarga_*.html")
+            print("   (y el .png si quieres) para extraer los selectores.")
     finally:
         driver.quit()
     return 0
