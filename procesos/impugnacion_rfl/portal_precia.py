@@ -218,8 +218,10 @@ class PortalPreciaSelenium(PortalRFL):
             antes = self._archivos_en(carpeta_destino)
             link.click()
 
-            # 6) Esperar a que la descarga aparezca y quede estable
-            ruta = self._esperar_descarga(carpeta_destino, antes)
+            # 6) Esperar a que TERMINE la descarga del archivo esperado (SX...001).
+            #    Ojo: el portal ademas crea un 'downloads.htm' intermedio que se ignora.
+            self._etapa("esperar_descarga")
+            ruta = self._esperar_descarga(carpeta_destino, objetivo, antes)
             if self.logger:
                 self.logger.info("portal_descarga_ok", extra={"ruta": str(ruta)})
             return ruta
@@ -284,19 +286,50 @@ class PortalPreciaSelenium(PortalRFL):
         except Exception:  # noqa: BLE001
             pass
 
-    def _esperar_descarga(self, carpeta: Path, antes: set[str], tam_minimo: int = 1) -> Path:
-        """Espera un archivo NUEVO, estable (sin .crdownload/.tmp) y > umbral."""
+    def _esperar_descarga(
+        self, carpeta: Path, objetivo: str, antes: set[str], tam_minimo: int = 1
+    ) -> Path:
+        """Espera a que TERMINE la descarga del archivo esperado (``objetivo``).
+
+        El portal descarga el plano como ``SX{MMDDYY}.001`` (archivo grande) y de
+        paso crea un ``downloads.htm`` intermedio: se ignora todo lo que no
+        empiece por ``objetivo`` y lo que aun este en ``.crdownload/.tmp/.part``.
+        Chrome renombra el ``.crdownload`` al nombre final SOLO al completar.
+        """
+        carpeta = Path(carpeta)
+        pref = objetivo.upper()
+        temporales = (".crdownload", ".tmp", ".part")
         fin = time.time() + self.timeout_seg
         while time.time() < fin:
-            for p in Path(carpeta).iterdir():
-                if not p.is_file() or p.name in antes:
+            descargando = False
+            for p in carpeta.iterdir():
+                if not p.is_file() or not p.name.upper().startswith(pref):
                     continue
-                if p.name.endswith((".crdownload", ".tmp")):
+                if p.name.endswith(temporales):
+                    descargando = True  # aun en progreso
+                    continue
+                if p.name in antes:
                     continue
                 if p.stat().st_size >= tam_minimo:
+                    self._limpiar_intermedios(carpeta, antes)
                     return p
+            if self.logger and descargando:
+                self.logger.info("portal_descarga_en_progreso", extra={"objetivo": objetivo})
             time.sleep(1)
-        raise PortalError("Timeout esperando la descarga (o archivo corrupto/tam 0).")
+        raise PortalError(
+            f"Timeout esperando que termine la descarga de {objetivo}*.001 "
+            f"(¿conexion lenta? subir portal.timeout_seg)."
+        )
+
+    @staticmethod
+    def _limpiar_intermedios(carpeta: Path, antes: set[str]) -> None:
+        """Borra archivos intermedios nuevos (p. ej. downloads.htm)."""
+        for p in Path(carpeta).iterdir():
+            if p.is_file() and p.name not in antes and p.name.lower().endswith((".htm", ".html")):
+                try:
+                    p.unlink()
+                except Exception:  # noqa: BLE001
+                    pass
 
     def _screenshot(self, driver, etiqueta: str) -> None:
         try:
