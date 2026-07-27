@@ -52,3 +52,32 @@ class MailClient(ABC):
     ) -> None:
         """Envia el correo. Si ``enviar_de_verdad`` es False, lo deja como
         borrador (o no lo envia) y lo registra claramente en el log."""
+
+
+class MailCompuesto(MailClient):
+    """Combina dos backends: uno LEE el correo detonante y otro ENVIA.
+
+    Uso: con ``--simular-correo`` se lee el detonante de un archivo (lector
+    simulado) pero se envia por el backend real (p. ej. Outlook COM), sin
+    mezclar ambas responsabilidades.
+    """
+
+    def __init__(self, lector: MailClient, emisor: MailClient) -> None:
+        self.lector = lector
+        self.emisor = emisor
+
+    @property
+    def logger(self):
+        return getattr(self.emisor, "logger", None)
+
+    @logger.setter
+    def logger(self, value) -> None:
+        for c in (self.lector, self.emisor):
+            if hasattr(c, "logger"):
+                c.logger = value
+
+    def buscar_correo_precia(self, *args, **kwargs):
+        return self.lector.buscar_correo_precia(*args, **kwargs)
+
+    def enviar(self, *args, **kwargs):
+        return self.emisor.enviar(*args, **kwargs)

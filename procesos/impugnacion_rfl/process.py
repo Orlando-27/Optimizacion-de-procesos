@@ -247,20 +247,29 @@ def construir_proceso(
 ) -> ImpugnacionRFL:
     """Construye el proceso con los adaptadores segun entorno/config."""
     # --- Correo ---
-    backend = "simulado" if ruta_simular_correo else cfg.backend_correo_activo
-    if backend == "simulado":
+    def _crear_backend_correo(nombre: str) -> MailClient:
+        if nombre == "simulado":
+            from core.adapters.mail_simulado import MailSimulado
+            return MailSimulado(ruta_cuerpo=FIXTURE_CORREO, logger=logger)
+        if nombre == "smtp_imap":
+            from core.adapters.mail_smtp_imap import MailSmtpImap
+            usuario, clave = secretos_smtp(cfg.entorno)
+            return MailSmtpImap(usuario=usuario or "", clave=clave or "", logger=logger)
+        if nombre == "outlook_com":
+            from core.adapters.mail_outlook_com import MailOutlookCom
+            return MailOutlookCom(logger=logger, remitente=cfg.correo_salida.remitente)
+        raise ValueError(f"backend_correo desconocido: {nombre}")
+
+    # El EMISOR siempre es el backend real de config (outlook_com/smtp/simulado).
+    emisor = _crear_backend_correo(cfg.backend_correo_activo)
+    if ruta_simular_correo:
+        # --simular-correo solo cambia la LECTURA del detonante, no el envio.
+        from core.adapters.mail_base import MailCompuesto
         from core.adapters.mail_simulado import MailSimulado
-        ruta = ruta_simular_correo or FIXTURE_CORREO
-        mail: MailClient = MailSimulado(ruta_cuerpo=ruta, logger=logger)
-    elif backend == "smtp_imap":
-        from core.adapters.mail_smtp_imap import MailSmtpImap
-        usuario, clave = secretos_smtp(cfg.entorno)
-        mail = MailSmtpImap(usuario=usuario or "", clave=clave or "", logger=logger)
-    elif backend == "outlook_com":
-        from core.adapters.mail_outlook_com import MailOutlookCom
-        mail = MailOutlookCom(logger=logger, remitente=cfg.correo_salida.remitente)
+        lector = MailSimulado(ruta_cuerpo=ruta_simular_correo, logger=logger)
+        mail: MailClient = MailCompuesto(lector=lector, emisor=emisor)
     else:
-        raise ValueError(f"backend_correo desconocido: {backend}")
+        mail = emisor
 
     # --- Portal ---
     if cfg.backend_portal_activo == "simulado":
