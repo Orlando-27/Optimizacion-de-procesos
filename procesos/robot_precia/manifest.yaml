@@ -1,0 +1,21 @@
+# === Manifiesto del proceso (metadatos) ===
+process_id: robot_precia
+nombre: "Robot Precia - Descarga diaria de insumos"
+version: "0.1.0"
+owner: "jbobadilla@colfondos.com.co"
+descripcion: >
+  Robot de descarga de insumos del portal de Precia (web scraping con Selenium).
+  Descarga ~43 archivos de distintas secciones (Renta Fija/Variable, Derivados,
+  Productos Estructurados) para la fecha t-1; los lunes descarga el fin de
+  semana completo. Se programa en el Programador de Tareas todos los dias a las
+  04:00. Reutiliza el motor (core) y el login del portal ya probado.
+criticidad: alta
+trigger: "scheduler (Programador de Tareas, 04:00 todos los dias)"
+dependencias:
+  - "Portal Precia (Selenium) - mismas credenciales que impugnacion_rfl"
+  - "Ruta unica de destino (sandbox en test, UNC en prod)"
+etapas:
+  extract: "planificar: fechas objetivo (t-1; lunes = fin de semana) x insumos"
+  transform: "descargar cada insumo con Selenium y guardarlo en la ruta destino"
+  validate: "si hubo fallos -> alerta por correo a la lista configurada"
+  load: "resumen de la corrida (descargados / fallidos)"

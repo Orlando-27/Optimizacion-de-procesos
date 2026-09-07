@@ -1,0 +1,43 @@
+# =====================================================================
+#  Configuracion del Robot Precia (descarga diaria de insumos)
+# =====================================================================
+entorno: test               # test | prod
+
+rutas:
+  # RUTA UNICA de destino de los insumos (por ahora una sola).
+  test: "./sandbox/robot_precia"
+  # En prod: UNC real (NO usar M:). Reemplazar SERVIDOR.
+  prod: "\\\\SERVIDOR\\COB\\Gerencia Estrategia\\Analisis Cuantitativo\\BDatos\\INSUMOS_PRECIA"
+
+portal:
+  url_login: "https://www.precia.co/wp-login.php"
+  headless: false            # las apps JSF de Precia fallan headless -> con ventana
+  timeout_seg: 120
+  tam_minimo_bytes: 1
+
+fecha:
+  dias_retroceso_max: 7               # cuantos dias atras buscar si t-1 no esta
+  lunes_incluye_fin_de_semana: true   # los lunes: sabado + domingo
+
+# Backend de I/O por entorno.
+backend_correo:
+  test: "simulado"           # para las alertas; en la oficina: outlook_com
+  prod: "outlook_com"
+backend_portal:
+  test: "simulado"           # simulado | selenium (descarga real: --portal selenium)
+  prod: "selenium"
+
+alertas:
+  owner: "jbobadilla@colfondos.com.co"
+  asunto: "Robot Precia: fallo en la descarga de insumos"
+  # A quienes avisar si el robot falla (correos de PRUEBA, reemplazar por reales).
+  destinatarios:
+    test: ["jbobadilla@colfondos.com.co"]
+    prod:
+      - "jbobadilla@colfondos.com.co"          # <TODO reemplazar por los reales>
+      - "persona2.alertas@colfondos.com.co"    # <TODO reemplazar>
+  cc:
+    test: []
+    prod: []
+
+manifiesto: "insumos.yaml"

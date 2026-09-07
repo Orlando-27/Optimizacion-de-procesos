@@ -1,0 +1,91 @@
+# =====================================================================
+#  MANIFIESTO DE INSUMOS - Robot Precia
+# =====================================================================
+# Transcrito de las imagenes del Excel "Descarga archivos precia 1".
+# Cada insumo se ubica en su seccion del portal, se selecciona la fecha
+# objetivo (t-1; los lunes tambien el fin de semana), se filtra/pagina si
+# aplica, y se descarga la fila cuyo nombre empieza por 'prefijo'.
+#
+# Campos:
+#   categoria : agrupacion de negocio (informativo)
+#   prefijo   : texto con el que EMPIEZA el nombre del archivo en la tabla
+#               (tras seleccionar la fecha, la tabla solo muestra esa fecha,
+#                asi que basta el prefijo para ubicar la fila)
+#   patron    : patron del nombre con token de fecha, para validar/renombrar
+#               ({MMDDYY} | {DDMMYY} | {YYYY_MM_DD}); best-effort, CONFIRMAR
+#   area      : menu superior del portal (Clientes ...)
+#   seccion   : sub-seccion / boton dentro del area
+#   pagina    : pagina de la tabla donde aparece (1 o 2)
+#   filtro    : texto a escribir en el filtro de la tabla (o null)
+#
+# TOTAL declarado en el Excel: 43 (verificar contra el Excel real).
+# =====================================================================
+
+insumos:
+  # ---------------- Renta Fija Local (PAGINA 2) ----------------
+  - {categoria: "Renta Fija Local", prefijo: "SB", patron: "SB{MMDDYY}",  area: "Clientes Renta Fija Local", seccion: "Archivos Renta Fija Local", pagina: 2, filtro: null}
+  - {categoria: "Renta Fija Local", prefijo: "SC", patron: "SC{MMDDYY}",  area: "Clientes Renta Fija Local", seccion: "Archivos Renta Fija Local", pagina: 2, filtro: null}
+  - {categoria: "Renta Fija Local", prefijo: "SM", patron: "SM{MMDDYY}",  area: "Clientes Renta Fija Local", seccion: "Archivos Renta Fija Local", pagina: 2, filtro: null}
+  - {categoria: "Renta Fija Local", prefijo: "SN", patron: "SN{MMDDYY}",  area: "Clientes Renta Fija Local", seccion: "Archivos Renta Fija Local", pagina: 2, filtro: null}
+  - {categoria: "Renta Fija Local", prefijo: "SP", patron: "SP{MMDDYY}",  area: "Clientes Renta Fija Local", seccion: "Archivos Renta Fija Local", pagina: 2, filtro: null}
+  - {categoria: "Renta Fija Local", prefijo: "SR", patron: "SR{MMDDYY}",  area: "Clientes Renta Fija Local", seccion: "Archivos Renta Fija Local", pagina: 2, filtro: null}
+  - {categoria: "Renta Fija Local", prefijo: "SU", patron: "SU{MMDDYY}",  area: "Clientes Renta Fija Local", seccion: "Archivos Renta Fija Local", pagina: 2, filtro: null}
+  - {categoria: "Renta Fija Local", prefijo: "SV", patron: "SV{MMDDYY}",  area: "Clientes Renta Fija Local", seccion: "Archivos Renta Fija Local", pagina: 2, filtro: null}
+  - {categoria: "Renta Fija Local", prefijo: "SX", patron: "SX{MMDDYY}",  area: "Clientes Renta Fija Local", seccion: "Archivos Renta Fija Local", pagina: 2, filtro: null}
+  - {categoria: "Renta Fija Local", prefijo: "SY", patron: "SY{MMDDYY}",  area: "Clientes Renta Fija Local", seccion: "Archivos Renta Fija Local", pagina: 2, filtro: null}
+
+  # ---------------- Renta Fija Internacional (PAGINA 1) ----------------
+  - {categoria: "Renta Fija Internacional", prefijo: "MX", patron: "MX{MMDDYY}_FormatoLocal.txt", area: "Clientes Renta Fija Local", seccion: "Archivos Renta Fija Internacional", pagina: 1, filtro: null}
+  - {categoria: "Renta Fija Internacional", prefijo: "MX", patron: "MX{MMDDYY}.txt",              area: "Clientes Renta Fija Local", seccion: "Archivos Renta Fija Internacional", pagina: 1, filtro: null}
+
+  # ---------------- Renta Variable Local (PAGINA 1) ----------------
+  - {categoria: "Renta Variable Local", prefijo: "bolvalora_", patron: "bolvalora_{YYYY_MM_DD}_acciones.xls", area: "Clientes Renta Variable", seccion: "Archivos De Valoración", pagina: 1, filtro: null}
+  - {categoria: "Renta Variable Local", prefijo: "SW",         patron: "SW{MMDDYY}.002",                      area: "Clientes Renta Variable", seccion: "Archivos De Valoración", pagina: 1, filtro: null}
+
+  # ---------------- Renta Variable Internacional (PAGINA 1) ----------------
+  - {categoria: "Renta Variable Internacional", prefijo: "MX", patron: "MX{MMDDYY}_RV_FormatoLocal.txt", area: "Clientes Renta Variable", seccion: "Archivos De Valoración Internacional", pagina: 1, filtro: null}
+  - {categoria: "Renta Variable Internacional", prefijo: "MX", patron: "MX{MMDDYY}_RV.txt",              area: "Clientes Renta Variable", seccion: "Archivos De Valoración Internacional", pagina: 1, filtro: null}
+
+  # ---------------- Derivados Forward Local (PAGINA 1, filtro FWD) ----------------
+  - {categoria: "Derivados Forward Local", prefijo: "Fwd_USDCOP_Diaria_", patron: "Fwd_USDCOP_Diaria_{MMDDYY}", area: "Clientes Derivados", seccion: "Descargar Archivo Agrupador > Insumos Locales", pagina: 1, filtro: "FWD"}
+
+  # ---------------- Derivados SWAP Local (PAGINA 1, filtro SWAPCC) ----------------
+  - {categoria: "Derivados SWAP Local", prefijo: "SwapCC_DTF_Diaria_",      patron: "SwapCC_DTF_Diaria_{MMDDYY}",      area: "Clientes Derivados", seccion: "Descargar Archivo Agrupador > Insumos Locales", pagina: 1, filtro: "SWAPCC"}
+  - {categoria: "Derivados SWAP Local", prefijo: "SwapCC_EURCOP_Diaria_",   patron: "SwapCC_EURCOP_Diaria_{MMDDYY}",   area: "Clientes Derivados", seccion: "Descargar Archivo Agrupador > Insumos Locales", pagina: 1, filtro: "SWAPCC"}
+  - {categoria: "Derivados SWAP Local", prefijo: "SwapCC_IBR_Diaria_",      patron: "SwapCC_IBR_Diaria_{MMDDYY}",      area: "Clientes Derivados", seccion: "Descargar Archivo Agrupador > Insumos Locales", pagina: 1, filtro: "SWAPCC"}
+  - {categoria: "Derivados SWAP Local", prefijo: "SwapCC_USDCO_DIARIA",     patron: "SwapCC_USDCO_DIARIA{MMDDYY}",     area: "Clientes Derivados", seccion: "Descargar Archivo Agrupador > Insumos Locales", pagina: 1, filtro: "SWAPCC"}
+  - {categoria: "Derivados SWAP Local", prefijo: "SwapCC_IBRUVR_Diaria_",   patron: "SwapCC_IBRUVR_Diaria_{MMDDYY}",   area: "Clientes Derivados", seccion: "Descargar Archivo Agrupador > Insumos Locales", pagina: 1, filtro: "SWAPCC"}
+  - {categoria: "Derivados SWAP Local", prefijo: "SwapCC_LIBORCOP_Diaria_", patron: "SwapCC_LIBORCOP_Diaria_{MMDDYY}", area: "Clientes Derivados", seccion: "Descargar Archivo Agrupador > Insumos Locales", pagina: 1, filtro: "SWAPCC"}
+  - {categoria: "Derivados SWAP Local", prefijo: "SwapCC_LIBORUVR_Diaria_", patron: "SwapCC_LIBORUVR_Diaria_{MMDDYY}", area: "Clientes Derivados", seccion: "Descargar Archivo Agrupador > Insumos Locales", pagina: 1, filtro: "SWAPCC"}
+  # Agregados (imagen 4 / Teams) - CONFIRMAR filtro y seccion:
+  - {categoria: "Derivados SWAP Local", prefijo: "SwapCC2_IBR_Colateral_USD_Diaria_", patron: "SwapCC2_IBR_Colateral_USD_Diaria_{MMDDYY}", area: "Clientes Derivados", seccion: "Descargar Archivo Agrupador > Insumos Locales", pagina: 1, filtro: "SWAPCC"}
+  - {categoria: "Derivados SWAP Local", prefijo: "SwapCC2_COP_Colateral_USD_Diaria_", patron: "SwapCC2_COP_Colateral_USD_Diaria_{MMDDYY}", area: "Clientes Derivados", seccion: "Descargar Archivo Agrupador > Insumos Locales", pagina: 1, filtro: "SWAPCC"}
+
+  # ---------------- Derivados SWAP Internacional (PAGINA 1) ----------------
+  - {categoria: "Derivados SWAP Internacional", prefijo: "SwapCC2_EURCOP_Diaria", patron: "SwapCC2_EURCOP_Diaria{MMDDYY}", area: "Clientes Derivados", seccion: "Descargar Archivo Agrupador > Insumos Swaps Internacionales", pagina: 1, filtro: null}
+  - {categoria: "Derivados SWAP Internacional", prefijo: "SwapCC_USDOIS_Diaria_", patron: "SwapCC_USDOIS_Diaria_{MMDDYY}", area: "Clientes Derivados", seccion: "Descargar Archivo Agrupador > Insumos Swaps Internacionales", pagina: 1, filtro: null}
+  - {categoria: "Derivados SWAP Internacional", prefijo: "SwapCC_EUROIS_Diaria_", patron: "SwapCC_EUROIS_Diaria_{MMDDYY}", area: "Clientes Derivados", seccion: "Descargar Archivo Agrupador > Insumos Swaps Internacionales", pagina: 1, filtro: null}
+
+  # ---------------- Derivados Forward Internacional (PAGINA 1, filtro) ----------------
+  - {categoria: "Derivados Forward Internacional", prefijo: "Fwd_GBPUSD_Diaria_", patron: "Fwd_GBPUSD_Diaria_{MMDDYY}", area: "Clientes Derivados", seccion: "Descargar Archivo Agrupador > Insumos Forward Internacionales", pagina: 1, filtro: "FWD"}
+  - {categoria: "Derivados Forward Internacional", prefijo: "Fwd_EURUSD_Diaria_", patron: "Fwd_EURUSD_Diaria_{MMDDYY}", area: "Clientes Derivados", seccion: "Descargar Archivo Agrupador > Insumos Forward Internacionales", pagina: 1, filtro: "FWD"}
+  - {categoria: "Derivados Forward Internacional", prefijo: "Fwd_EUR2USD_Diaria_", patron: "Fwd_EUR2USD_Diaria_{MMDDYY}", area: "Clientes Derivados", seccion: "Descargar Archivo Agrupador > Insumos Forward Internacionales", pagina: 1, filtro: "FWD"}
+  - {categoria: "Derivados Forward Internacional", prefijo: "Fwd_USDBRL_Diaria_", patron: "Fwd_USDBRL_Diaria_{MMDDYY}", area: "Clientes Derivados", seccion: "Descargar Archivo Agrupador > Insumos Forward Internacionales", pagina: 1, filtro: "FWD"}
+  - {categoria: "Derivados Forward Internacional", prefijo: "Fwd_USDCAD_Diaria_", patron: "Fwd_USDCAD_Diaria_{MMDDYY}", area: "Clientes Derivados", seccion: "Descargar Archivo Agrupador > Insumos Forward Internacionales", pagina: 1, filtro: "FWD"}
+  - {categoria: "Derivados Forward Internacional", prefijo: "Fwd_USDCHF_Diaria_", patron: "Fwd_USDCHF_Diaria_{MMDDYY}", area: "Clientes Derivados", seccion: "Descargar Archivo Agrupador > Insumos Forward Internacionales", pagina: 1, filtro: "FWD"}
+  - {categoria: "Derivados Forward Internacional", prefijo: "Fwd_USDCLP_Diaria_", patron: "Fwd_USDCLP_Diaria_{MMDDYY}", area: "Clientes Derivados", seccion: "Descargar Archivo Agrupador > Insumos Forward Internacionales", pagina: 1, filtro: "FWD"}
+  - {categoria: "Derivados Forward Internacional", prefijo: "Fwd_USDJPY_Diaria_", patron: "Fwd_USDJPY_Diaria_{MMDDYY}", area: "Clientes Derivados", seccion: "Descargar Archivo Agrupador > Insumos Forward Internacionales", pagina: 1, filtro: "FWD"}
+  - {categoria: "Derivados Forward Internacional", prefijo: "Fwd_USDMXN_Diaria_", patron: "Fwd_USDMXN_Diaria_{MMDDYY}", area: "Clientes Derivados", seccion: "Descargar Archivo Agrupador > Insumos Forward Internacionales", pagina: 1, filtro: "FWD"}
+  - {categoria: "Derivados Forward Internacional", prefijo: "Matriz_TC_",         patron: "Matriz_TC_{MMDDYY}",         area: "Clientes Derivados", seccion: "Descargar Archivo Agrupador > Insumos Forward Internacionales", pagina: 1, filtro: "FWD"}
+
+  # ---------------- Otros Insumos (PAGINA 1) ----------------
+  - {categoria: "Otros Insumos (volatilidades strike USDCOP)", prefijo: "vol_stk_USDCOP_", patron: "vol_stk_USDCOP_{MMDDYY}", area: "Clientes Derivados", seccion: "Descargar Archivo Agrupador > Otros Insumos", pagina: 1, filtro: null}
+
+  # ---------------- Productos Estructurados (PAGINA 1) ----------------
+  - {categoria: "Productos Estructurados", prefijo: "800149496_Colf_INSUMOS_call_",   patron: "800149496_Colf_INSUMOS_call_{DDMMYY}.csv",   area: "Clientes Productos Estructurados", seccion: "Consulta de productos", pagina: 1, filtro: null}
+  - {categoria: "Productos Estructurados", prefijo: "800149496_Colf_INSUMOS_capped_", patron: "800149496_Colf_INSUMOS_capped_{DDMMYY}.csv", area: "Clientes Productos Estructurados", seccion: "Consulta de productos", pagina: 1, filtro: null}
+  - {categoria: "Productos Estructurados", prefijo: "800149496_Colf_INSUMOS_cln_",    patron: "800149496_Colf_INSUMOS_cln_{DDMMYY}.csv",    area: "Clientes Productos Estructurados", seccion: "Consulta de productos", pagina: 1, filtro: null}
+  - {categoria: "Productos Estructurados", prefijo: "800149496_Colf_NE",              patron: "800149496_Colf_NE{DDMMYY}.csv",              area: "Clientes Productos Estructurados", seccion: "Consulta de productos", pagina: 1, filtro: null}
+
+  # ---------------- Renta Fija - Historicos Betas (PAGINA 1) ----------------
+  - {categoria: "Renta Fija - Historicos Betas", prefijo: "Curva de TES B en Pesos", patron: "Curva de TES B en Pesos", area: "Clientes Productos Estructurados", seccion: "Históricos Betas > Curva de TES B en Pesos", pagina: 1, filtro: null}
