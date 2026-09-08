@@ -2,23 +2,34 @@
 
 Reutiliza el login/driver/datepicker/espera-de-descarga ya PROBADOS en
 ``impugnacion_rfl.portal_precia.PortalPreciaSelenium`` y agrega la navegacion
-por las distintas areas (Clientes Renta Fija Local, Renta Variable, Derivados,
-Productos Estructurados) para cada insumo.
+por las distintas areas/secciones (segun ``secciones.py``) para cada insumo.
 
-Dos implementaciones detras de la misma interfaz:
-  - NavegadorSimulado : sin portal; crea archivos placeholder. Para test/offline.
-  - NavegadorSelenium : descarga real. La navegacion por area/seccion se cablea
-                        en el Bloque 3 con los selectores capturados (Bloque 2).
+Flujo por insumo (NavegadorSelenium.descargar):
+  1. Ir al area de clientes (landing_url) y hacer clic en el boton de la seccion.
+  2. Entrar al iframe #BranderFrame (app JSF/PrimeFaces).
+  3. Seleccionar la fecha objetivo en el datepicker inline.
+  4. Aplicar filtro de texto si la seccion lo requiere (FWD / SWAPCC).
+  5. Ir a la pagina indicada (paginador PrimeFaces) si no es la 1.
+  6. Ubicar la fila cuyo nombre empieza por el prefijo y hacer clic en su descarga.
+  7. Esperar a que termine la descarga (archivo estable en la carpeta destino).
+
+Dos implementaciones:
+  - NavegadorSimulado : sin portal; crea placeholders. Para test/offline.
+  - NavegadorSelenium : descarga real. Las secciones cuyos selectores aun no se
+                        capturaron (ver secciones.py) fallan con NavegadorError
+                        explicito ("pendiente de mapear").
 """
 
 from __future__ import annotations
 
+import time
 from abc import ABC, abstractmethod
 from datetime import date
 from pathlib import Path
 
 from procesos.robot_precia.config_robot import ConfigRobot, Insumo
 from procesos.robot_precia.fechas import render_nombre
+from procesos.robot_precia.secciones import SECCIONES, seccion_lista
 
 
 class NavegadorError(Exception):
@@ -26,19 +37,12 @@ class NavegadorError(Exception):
 
 
 class NavegadorPrecia(ABC):
-    """Interfaz de navegacion/descarga de un insumo para una fecha dada."""
-
     @abstractmethod
-    def abrir(self) -> None:
-        """Inicia el navegador y hace login (una sola vez por corrida)."""
-
+    def abrir(self) -> None: ...
     @abstractmethod
-    def descargar(self, insumo: Insumo, fecha: date) -> Path:
-        """Descarga el insumo para la fecha y devuelve la ruta del archivo."""
-
+    def descargar(self, insumo: Insumo, fecha: date) -> Path: ...
     @abstractmethod
-    def cerrar(self) -> None:
-        """Cierra el navegador. Idempotente."""
+    def cerrar(self) -> None: ...
 
 
 class NavegadorSimulado(NavegadorPrecia):
@@ -69,14 +73,7 @@ class NavegadorSimulado(NavegadorPrecia):
 
 
 class NavegadorSelenium(NavegadorPrecia):
-    """Descarga real con Selenium. Reutiliza PortalPreciaSelenium para login y
-    utilidades; la navegacion por area/seccion se cablea en el Bloque 3.
-
-    NOTA: cada 'area' del portal (Clientes Renta Variable, Clientes Derivados,
-    Clientes Productos Estructurados) es una seccion NUEVA que hay que mapear
-    (Bloque 2) con scripts/explorar_portal.py; hasta entonces, esas descargas
-    fallan con NavegadorError explicito.
-    """
+    """Descarga real. Reutiliza PortalPreciaSelenium para login y utilidades."""
 
     def __init__(self, cfg: ConfigRobot, logger=None) -> None:
         self.cfg = cfg
@@ -84,8 +81,10 @@ class NavegadorSelenium(NavegadorPrecia):
         self._portal = None
         self._driver = None
         self._wait = None
-        self._area_actual: str | None = None
+        # Estado para evitar re-navegar si el insumo es de la misma seccion/fecha.
+        self._contexto = (None, None, None)  # (area, seccion, fecha)
 
+    # ------------------------------------------------------------------ abrir
     def abrir(self) -> None:
         from selenium.webdriver.support.ui import WebDriverWait
 
@@ -106,23 +105,105 @@ class NavegadorSelenium(NavegadorPrecia):
         self._wait = WebDriverWait(self._driver, self.cfg.portal.timeout_seg)
         self._portal.login(self._driver, self._wait, usuario, clave)
 
+    # -------------------------------------------------------------- descargar
     def descargar(self, insumo: Insumo, fecha: date) -> Path:
-        # === PENDIENTE (Bloque 3): navegacion real por area/seccion ===
-        # Pasos por insumo (reutilizando utilidades de PortalPreciaSelenium):
-        #   1. Ir al area de clientes correspondiente (insumo.area) y entrar al
-        #      iframe #BranderFrame (como en impugnacion).
-        #   2. Abrir la seccion (insumo.seccion) -> boton del menu.
-        #   3. Seleccionar la fecha (self._portal._seleccionar_fecha).
-        #   4. Si insumo.filtro: escribirlo en el filtro de la tabla.
-        #   5. Ir a insumo.pagina (paginador) si != 1.
-        #   6. Ubicar la fila cuyo nombre empieza por insumo.prefijo y hacer clic
-        #      en su descarga.
-        #   7. self._portal._esperar_descarga(carpeta, prefijo, antes).
-        raise NavegadorError(
-            f"Seccion '{insumo.area} > {insumo.seccion}' pendiente de mapear "
-            "(Bloque 2/3). Capturar selectores con scripts/explorar_portal.py."
-        )
+        if not seccion_lista(insumo.area, insumo.seccion):
+            raise NavegadorError(
+                f"Seccion '{insumo.area} > {insumo.seccion}' pendiente de mapear "
+                "(ver secciones.py / Bloque 2). Capturar con scripts/explorar_portal.py."
+            )
+        from selenium.webdriver.common.by import By
 
+        carpeta = self.cfg.carpeta_destino
+        ctx_nuevo = (insumo.area, insumo.seccion, fecha)
+        # Solo re-navegar si cambio la seccion o la fecha (optimizacion).
+        if ctx_nuevo != self._contexto:
+            self._abrir_seccion(insumo)
+            self._portal._seleccionar_fecha(self._driver, self._wait, fecha)
+            if insumo.filtro:
+                self._aplicar_filtro(insumo)
+            if insumo.pagina and insumo.pagina > 1:
+                self._ir_a_pagina(insumo.pagina)
+            self._contexto = ctx_nuevo
+
+        antes = self._portal._archivos_en(carpeta)
+        link = self._buscar_fila_descarga(insumo.prefijo)
+        link.click()
+        ruta = self._portal._esperar_descarga(carpeta, insumo.prefijo, antes)
+        if self.logger:
+            self.logger.info("insumo_descargado",
+                             extra={"insumo": insumo.prefijo, "fecha": str(fecha),
+                                    "archivo": Path(ruta).name})
+        return ruta
+
+    # ------------------------------------------------------------ navegacion
+    def _abrir_seccion(self, insumo: Insumo) -> None:
+        """Va al area de clientes, hace clic en la seccion y entra al iframe."""
+        from selenium.webdriver.common.by import By
+        from selenium.webdriver.support import expected_conditions as EC
+
+        cfg = SECCIONES[insumo.area]
+        boton = cfg["botones"][insumo.seccion]
+        self._driver.switch_to.default_content()
+        self._driver.get(cfg["landing_url"])
+        self._wait.until(lambda d: d.execute_script("return document.readyState") == "complete")
+        self._wait.until(EC.element_to_be_clickable((By.CSS_SELECTOR, boton))).click()
+        # Entrar al iframe con la app JSF y esperar a que cargue el datepicker.
+        self._wait.until(EC.frame_to_be_available_and_switch_to_it((By.ID, cfg["iframe"])))
+        self._wait.until(EC.presence_of_element_located(
+            (By.CSS_SELECTOR, ".ui-datepicker-calendar, [id$='_input']")))
+
+    def _aplicar_filtro(self, insumo: Insumo) -> None:
+        """Escribe el texto de filtro (FWD/SWAPCC) en el input de la seccion."""
+        from selenium.webdriver.common.by import By
+
+        selector = SECCIONES[insumo.area].get("filtros", {}).get(insumo.seccion)
+        if not selector or selector == "TODO":
+            raise NavegadorError(
+                f"Falta el selector del filtro para '{insumo.seccion}' "
+                "(capturarlo en secciones.py)."
+            )
+        campo = self._driver.find_element(By.CSS_SELECTOR, selector)
+        campo.clear()
+        campo.send_keys(insumo.filtro)
+        time.sleep(2)  # dar tiempo al filtrado ajax de PrimeFaces
+
+    def _ir_a_pagina(self, pagina: int) -> None:
+        """Hace clic en el numero de pagina del paginador de PrimeFaces."""
+        from selenium.webdriver.common.by import By
+
+        try:
+            self._driver.find_element(
+                By.XPATH,
+                f"//a[contains(@class,'ui-paginator-page') and normalize-space(text())='{pagina}']",
+            ).click()
+            time.sleep(2)
+        except Exception as e:  # noqa: BLE001
+            raise NavegadorError(f"No se pudo ir a la pagina {pagina}: {e}") from e
+
+    def _buscar_fila_descarga(self, prefijo: str):
+        """Ubica el enlace de descarga de la fila cuyo nombre empieza por prefijo.
+
+        Intenta primero por el atributo data-rk (PrimeFaces datatable); si no,
+        por el texto de la fila. La imagen de descarga es descargar.png.
+        """
+        from selenium.webdriver.common.by import By
+        from selenium.webdriver.support import expected_conditions as EC
+
+        candidatos = [
+            f"//tr[starts-with(@data-rk, '{prefijo}')]//a[.//img[contains(@src,'descargar')]]",
+            f"//tr[.//*[starts-with(normalize-space(.), '{prefijo}')]]"
+            f"//a[.//img[contains(@src,'descargar')]]",
+        ]
+        for xp in candidatos:
+            try:
+                return self._wait.until(EC.element_to_be_clickable((By.XPATH, xp)))
+            except Exception:  # noqa: BLE001
+                continue
+        self._portal._screenshot(self._driver, f"fila_no_encontrada_{prefijo}")
+        raise NavegadorError(f"No se encontro la fila del insumo '{prefijo}' (¿publicado?).")
+
+    # ------------------------------------------------------------------ cerrar
     def cerrar(self) -> None:
         if self._driver is not None:
             try:

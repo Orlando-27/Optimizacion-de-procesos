@@ -4,14 +4,18 @@ Robot de **web scraping con Selenium** que descarga ~43 insumos del portal de
 Precia todos los días a las **04:00** (Programador de Tareas). Reutiliza el
 motor (`core/`) y el **login del portal ya probado** en `impugnacion_rfl`.
 
-> **Estado:** 🟡 En construcción por bloques.
-> - ✅ **Bloque 1** (este): estructura, manifiesto de insumos, lógica de fechas
->   (con tests), config, esqueleto ETL, alertas y modo `--plan`. Corre e2e en
->   `test` con navegador **simulado**.
-> - ⏳ **Bloque 2:** mapear las secciones nuevas del portal (Renta Variable,
->   Derivados, Productos Estructurados) — capturar selectores.
-> - ⏳ **Bloque 3:** cablear la descarga real por sección (fecha → filtro →
->   paginación → ubicar por prefijo → descargar).
+> **Estado:**
+> - ✅ **Bloque 1:** estructura, manifiesto, lógica de fechas (tests), config,
+>   ETL, alertas, modo `--plan`. Corre e2e en `test` (navegador simulado).
+> - ✅ **Bloque 3 (framework):** descarga real **genérica** cableada en
+>   `NavegadorSelenium` (navegar sección → fecha → filtro → paginación → ubicar
+>   por prefijo → descargar), reutilizando el flujo RFL ya probado.
+> - ✅ **Renta Fija Local** (pág. 2) y **Renta Fija Internacional** (`#arin`):
+>   secciones **cableadas** (usan el área ya mapeada). Listas para probar real.
+> - ⏳ **Bloque 2 (pendiente, requiere tu portal):** capturar los selectores de
+>   `Renta Variable`, `Derivados` y `Productos Estructurados` con
+>   `scripts/explorar_robot.py` y completarlos en `secciones.py`. Hasta entonces,
+>   esas secciones fallan con `NavegadorError` explícito ("pendiente de mapear").
 
 ---
 
