@@ -57,7 +57,7 @@ insumos:
   - {categoria: "Derivados SWAP Local", prefijo: "SwapCC_IBRUVR_Diaria_",   patron: "SwapCC_IBRUVR_Diaria_{MMDDYY}",   area: "Clientes Derivados", seccion: "Descargar Archivo Agrupador > Insumos Locales", pagina: 1, filtro: "SWAPCC"}
   - {categoria: "Derivados SWAP Local", prefijo: "SwapCC_LIBORCOP_Diaria_", patron: "SwapCC_LIBORCOP_Diaria_{MMDDYY}", area: "Clientes Derivados", seccion: "Descargar Archivo Agrupador > Insumos Locales", pagina: 1, filtro: "SWAPCC"}
   - {categoria: "Derivados SWAP Local", prefijo: "SwapCC_LIBORUVR_Diaria_", patron: "SwapCC_LIBORUVR_Diaria_{MMDDYY}", area: "Clientes Derivados", seccion: "Descargar Archivo Agrupador > Insumos Locales", pagina: 1, filtro: "SWAPCC"}
-  # Agregados (imagen 4 / Teams) - CONFIRMAR filtro y seccion:
+  # Agregados (imagen 4 / Teams) - CONFIRMADO por el usuario: van dentro (filtro SWAPCC):
   - {categoria: "Derivados SWAP Local", prefijo: "SwapCC2_IBR_Colateral_USD_Diaria_", patron: "SwapCC2_IBR_Colateral_USD_Diaria_{MMDDYY}", area: "Clientes Derivados", seccion: "Descargar Archivo Agrupador > Insumos Locales", pagina: 1, filtro: "SWAPCC"}
   - {categoria: "Derivados SWAP Local", prefijo: "SwapCC2_COP_Colateral_USD_Diaria_", patron: "SwapCC2_COP_Colateral_USD_Diaria_{MMDDYY}", area: "Clientes Derivados", seccion: "Descargar Archivo Agrupador > Insumos Locales", pagina: 1, filtro: "SWAPCC"}
 
