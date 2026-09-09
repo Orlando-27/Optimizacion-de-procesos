@@ -127,7 +127,8 @@ class NavegadorSelenium(NavegadorPrecia):
             self._contexto = ctx_nuevo
 
         antes = self._portal._archivos_en(carpeta)
-        link = self._buscar_fila_descarga(insumo.prefijo)
+        nombre = render_nombre(insumo.patron, fecha)
+        link = self._buscar_fila_descarga(nombre, insumo.prefijo)
         link.click()
         ruta = self._portal._esperar_descarga(carpeta, insumo.prefijo, antes)
         if self.logger:
@@ -181,27 +182,40 @@ class NavegadorSelenium(NavegadorPrecia):
         except Exception as e:  # noqa: BLE001
             raise NavegadorError(f"No se pudo ir a la pagina {pagina}: {e}") from e
 
-    def _buscar_fila_descarga(self, prefijo: str):
-        """Ubica el enlace de descarga de la fila cuyo nombre empieza por prefijo.
+    def _buscar_fila_descarga(self, nombre: str, prefijo: str):
+        """Ubica el enlace de descarga de la fila del insumo.
 
-        Intenta primero por el atributo data-rk (PrimeFaces datatable); si no,
-        por el texto de la fila. La imagen de descarga es descargar.png.
+        Estrategia (de mas a menos preciso), con timeout CORTO para no colgarse:
+          1. Fila cuyo data-rk/texto CONTIENE el nombre completo (con fecha) ->
+             desambigua nombres que comparten prefijo (p.ej. los dos 'MX...').
+          2. Fila cuyo data-rk/texto EMPIEZA por el prefijo (fallback: prefijos
+             unicos como 'Fwd_USDCOP_Diaria_' cuyo formato de fecha no conocemos).
+        La imagen de descarga siempre es descargar.png.
         """
         from selenium.webdriver.common.by import By
         from selenium.webdriver.support import expected_conditions as EC
+        from selenium.webdriver.support.ui import WebDriverWait
 
+        # timeout corto: si no esta en esta pagina, falla rapido y sigue.
+        wait_corto = WebDriverWait(self._driver, 20)
         candidatos = [
+            f"//tr[contains(@data-rk, '{nombre}')]//a[.//img[contains(@src,'descargar')]]",
+            f"//tr[.//*[contains(normalize-space(.), '{nombre}')]]"
+            f"//a[.//img[contains(@src,'descargar')]]",
             f"//tr[starts-with(@data-rk, '{prefijo}')]//a[.//img[contains(@src,'descargar')]]",
             f"//tr[.//*[starts-with(normalize-space(.), '{prefijo}')]]"
             f"//a[.//img[contains(@src,'descargar')]]",
         ]
         for xp in candidatos:
             try:
-                return self._wait.until(EC.element_to_be_clickable((By.XPATH, xp)))
+                return wait_corto.until(EC.element_to_be_clickable((By.XPATH, xp)))
             except Exception:  # noqa: BLE001
                 continue
         self._portal._screenshot(self._driver, f"fila_no_encontrada_{prefijo}")
-        raise NavegadorError(f"No se encontro la fila del insumo '{prefijo}' (¿publicado?).")
+        raise NavegadorError(
+            f"No se encontro la fila del insumo '{nombre}' (prefijo '{prefijo}') "
+            "en la pagina actual (¿publicado? ¿pagina correcta?)."
+        )
 
     # ------------------------------------------------------------------ cerrar
     def cerrar(self) -> None:
