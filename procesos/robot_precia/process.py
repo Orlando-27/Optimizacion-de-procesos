@@ -70,8 +70,18 @@ class RobotPrecia(Proceso):
             if hoy.weekday() == 0 and not self.cfg.fecha.lunes_incluye_fin_de_semana:
                 fechas = [hoy - timedelta(days=1)]
 
+        # Filtro opcional (--solo): limita a insumos cuya area/categoria/prefijo
+        # contengan el texto, para probar una seccion aislada.
+        solo = (ctx.extra.get("solo") or "").lower()
+        insumos = self.insumos
+        if solo:
+            insumos = [i for i in insumos
+                       if solo in i.area.lower() or solo in i.categoria.lower()
+                       or solo in i.prefijo.lower()]
+            ctx.logger.info("filtro_solo", extra={"solo": solo, "insumos": len(insumos)})
+
         # Plan: (insumo, fecha) por cada combinacion.
-        plan = [(ins, f) for f in fechas for ins in self.insumos]
+        plan = [(ins, f) for f in fechas for ins in insumos]
         ctx.logger.info(
             "plan_construido",
             extra={"hoy": str(hoy), "fechas": [str(f) for f in fechas],
@@ -165,6 +175,8 @@ def _parse_args(argv=None) -> argparse.Namespace:
     p.add_argument("--headed", action="store_true", help="Navegador con ventana")
     p.add_argument("--fecha", type=_parse_fecha,
                    help="Forzar 'hoy' (YYYY-MM-DD) para el calculo de fechas")
+    p.add_argument("--solo", help="Filtrar insumos por area/categoria/prefijo "
+                   "(p.ej. --solo \"Renta Fija\") para probar una seccion aislada")
     p.add_argument("--config", type=Path, default=RUTA_CONFIG)
     return p.parse_args(argv)
 
@@ -185,13 +197,17 @@ def main(argv=None) -> int:
     if args.plan:
         hoy = args.fecha or date.today()
         fechas = fechas_objetivo(hoy)
+        solo = (args.solo or "").lower()
+        insumos = [i for i in proceso.insumos
+                   if not solo or solo in i.area.lower() or solo in i.categoria.lower()
+                   or solo in i.prefijo.lower()]
         print(f"HOY: {hoy} ({hoy.strftime('%A')}) | fechas objetivo: "
               f"{', '.join(str(f) for f in fechas)}")
-        print(f"Insumos en manifiesto: {len(proceso.insumos)} | "
-              f"descargas totales: {len(proceso.insumos) * len(fechas)}")
+        print(f"Insumos{(' (filtro=' + args.solo + ')') if args.solo else ''}: "
+              f"{len(insumos)} | descargas totales: {len(insumos) * len(fechas)}")
         print("-" * 70)
         for f in fechas:
-            for ins in proceso.insumos:
+            for ins in insumos:
                 print(f"  [{f}] {ins.categoria:32.32} -> {render_nombre(ins.patron, f)}"
                       f"{('  (filtro=' + ins.filtro + ')') if ins.filtro else ''}")
         return 0
@@ -199,6 +215,8 @@ def main(argv=None) -> int:
     extra = {}
     if args.fecha:
         extra["fecha_override"] = args.fecha
+    if args.solo:
+        extra["solo"] = args.solo
 
     res = ejecutar(
         proceso, cfg, trigger="cli", disparado_por="cli",
