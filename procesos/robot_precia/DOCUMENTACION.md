@@ -4,18 +4,23 @@ Robot de **web scraping con Selenium** que descarga ~43 insumos del portal de
 Precia todos los días a las **04:00** (Programador de Tareas). Reutiliza el
 motor (`core/`) y el **login del portal ya probado** en `impugnacion_rfl`.
 
-> **Estado:**
-> - ✅ **Bloque 1:** estructura, manifiesto, lógica de fechas (tests), config,
->   ETL, alertas, modo `--plan`. Corre e2e en `test` (navegador simulado).
-> - ✅ **Bloque 3 (framework):** descarga real **genérica** cableada en
->   `NavegadorSelenium` (navegar sección → fecha → filtro → paginación → ubicar
->   por prefijo → descargar), reutilizando el flujo RFL ya probado.
-> - ✅ **Renta Fija Local** (pág. 2) y **Renta Fija Internacional** (`#arin`):
->   secciones **cableadas** (usan el área ya mapeada). Listas para probar real.
-> - ⏳ **Bloque 2 (pendiente, requiere tu portal):** capturar los selectores de
->   `Renta Variable`, `Derivados` y `Productos Estructurados` con
->   `scripts/explorar_robot.py` y completarlos en `secciones.py`. Hasta entonces,
->   esas secciones fallan con `NavegadorError` explícito ("pendiente de mapear").
+> **Estado: COMPLETO — 44/44 insumos descargados y validados en real** (portal
+> de Precia, en el equipo de la oficina). Las 4 áreas quedan cableadas y probadas:
+> - ✅ **Renta Fija** Local (`#arlo`) + Internacional (`#arin`) — flujo *directo*
+>   (calendario inline + tabla). 12 insumos.
+> - ✅ **Derivados** (`#descagrup`) — flujo *agrupador* (grupo + fecha popup +
+>   Buscar + tabla, empate por prefijo con `contains`). 24 insumos.
+> - ✅ **Renta Variable** (`#arcval` / `#arcvalin`) — flujo *directo*. 4 insumos.
+> - ✅ **Productos Estructurados** (`#conpro`) — flujo *consulta* (fecha popup +
+>   tabla, sin botón Buscar; con **reintento con recarga** para descargas flaky
+>   como `800149496_Colf_NE`). 4 insumos.
+>
+> Idempotencia (no re-descarga lo ya bajado), fechas t‑1 (+ fin de semana los
+> lunes), y **alerta por correo** ante fallos, funcionando.
+>
+> **Nota:** la curva *TES B en Pesos* ("Histórico betas", `#hisbe`) NO es un
+> archivo descargable (es una tabla en pantalla); ese dato ya viene dentro de
+> los archivos de valoración de Renta Fija (`SB…`), por eso no se lista aparte.
 
 ---
 
@@ -83,18 +88,21 @@ schtasks /Create ^
 descarga necesita ventana (headless falla en las apps JSF), la tarea debe correr
 con sesión de usuario iniciada.
 
-## 6. Lo que queda PENDIENTE (Bloques 2 y 3)
+## 6. Lo que queda PENDIENTE (solo para producción)
 
-- **Mapear secciones nuevas** del portal: `Clientes Renta Variable`,
-  `Clientes Derivados` (Descargar Archivo Agrupador → Insumos Locales / Swaps /
-  Forward Internacionales / Otros Insumos), `Clientes Productos Estructurados`
-  (Consulta de productos, Históricos Betas). Capturar selectores con
-  `scripts/explorar_portal.py` (headed) — igual que se hizo con RFL.
-- **Cablear la descarga** por sección en `NavegadorSelenium.descargar()`:
-  entrar al iframe → seleccionar fecha → aplicar **filtro** (`FWD`/`SWAPCC`) →
-  ir a la **página** indicada → ubicar la fila por **prefijo** → descargar.
-- **Verificar el manifiesto** contra el Excel real: el `--plan` lista 45 filas;
-  el Excel declara **43**. Revisar los ítems marcados `CONFIRMAR` en `insumos.yaml`
-  (p. ej. los `SwapCC2_*_Colateral_USD` agregados por Teams, y el formato de
-  fecha de los archivos `_Diaria_`).
-- **Ruta UNC real** de destino (prod) y **destinatarios reales** de alerta.
+El scraping de las 44 secciones YA está mapeado, cableado y probado en real.
+Lo único que resta es la puesta en producción:
+
+- **Ruta de destino real (prod):** hoy es `./sandbox/robot_precia` en `test`.
+  Poner la ruta/UNC definitiva en `config.yaml` (`rutas.prod`).
+- **Destinatarios reales de la alerta:** hoy son correos de prueba en
+  `config.yaml` (`alertas.prod.destinatarios`). Reemplazar por los reales.
+- **Backend de correo/portal en prod:** ya configurados (`outlook_com` /
+  `selenium`); confirmar credenciales del portal en `.env` del equipo.
+- **Programador de Tareas** a las 04:00 (Lun–Dom) con sesión de usuario
+  iniciada (headed; las apps JSF fallan en headless). Ver `run_robot_precia.bat`.
+
+> Diagnóstico opcional: la variable de entorno `ROBOT_DUMP_FILAS=1` hace que el
+> robot registre en el log los nombres reales de las filas de cada tabla y el
+> HTML del enlace de descarga. Útil para mapear un área nueva o depurar; se deja
+> apagada en la corrida diaria.
