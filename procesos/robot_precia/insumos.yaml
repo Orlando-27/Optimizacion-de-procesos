@@ -88,7 +88,10 @@ insumos:
   - {categoria: "Productos Estructurados", prefijo: "800149496_Colf_INSUMOS_cln_",    patron: "800149496_Colf_INSUMOS_cln_{DDMMYY}.csv",    area: "Clientes Productos Estructurados", seccion: "Consulta de productos", pagina: 1, filtro: null}
   - {categoria: "Productos Estructurados", prefijo: "800149496_Colf_NE",              patron: "800149496_Colf_NE{DDMMYY}.csv",              area: "Clientes Productos Estructurados", seccion: "Consulta de productos", pagina: 1, filtro: null}
 
-  # ---------------- Renta Fija - Historico betas (PAGINA 1) ----------------
-  # Reubicado: 'Historico betas' (#hisbe) esta en Renta Fija, no en Productos
-  # Estructurados. Prefijo/patron TENTATIVOS: confirmar con captura de la seccion.
-  - {categoria: "Renta Fija - Historico betas", prefijo: "Curva de TES B en Pesos", patron: "Curva de TES B en Pesos", area: "Clientes Renta Fija Local", seccion: "Histórico betas", pagina: 1, filtro: null}
+  # NOTA: 'Curva de TES B en Pesos' (Historico betas) NO es un archivo
+  # descargable: la pantalla 'Historicos Betas' solo MUESTRA los coeficientes
+  # (Beta 0/1/2/Tao) en una tabla. Esos betas son los parametros de la curva
+  # TES B en Pesos que Precia entrega DENTRO de los archivos de valoracion de
+  # Renta Fija (SB..., etc.), que ya se descargan arriba. Por eso NO se lista
+  # como insumo aparte. Si algun dia se requiere el historico en CSV, se
+  # agregaria un flujo de extraccion (curva -> fecha -> Buscar -> volcar tabla).
