@@ -173,20 +173,27 @@ class NavegadorSelenium(NavegadorPrecia):
 
         cfg = SECCIONES[insumo.area]
         sel = cfg["sel"]
-        ctx_nuevo = (insumo.area, insumo.seccion, fecha)
-        if ctx_nuevo != self._contexto:
+        nombre = render_nombre(insumo.patron, fecha)
+
+        def _abrir() -> None:
+            """(Re)abre la seccion: recarga #conpro, entra al iframe y elige la
+            fecha en el popup. Es justo la maniobra que hace falta manualmente
+            cuando la primera descarga sale vacia."""
             self._abrir_seccion(insumo)                    # landing -> #conpro -> iframe
             self._seleccionar_fecha_popup(sel["fecha"], fecha)
             time.sleep(3)                                  # ajax refresca la tabla
-            self._contexto = ctx_nuevo
             if os.environ.get("ROBOT_DUMP_FILAS"):
                 self._volcar_filas_tabla(sel.get("tabla"))
 
-        antes = self._portal._archivos_en(carpeta)
-        nombre = render_nombre(insumo.patron, fecha)
-        link = self._buscar_multipagina(nombre, insumo.prefijo)
-        self._click_elemento(link)
-        ruta = self._portal._esperar_descarga(carpeta, insumo.prefijo, antes)
+        ctx_nuevo = (insumo.area, insumo.seccion, fecha)
+        if ctx_nuevo != self._contexto:
+            _abrir()
+            self._contexto = ctx_nuevo
+
+        # Algunas descargas (p.ej. 800149496_Colf_NE) fallan en el PRIMER intento
+        # y solo bajan tras recargar la seccion + reelegir la fecha. Por eso se
+        # reintenta reabriendo la seccion, replicando la solucion manual.
+        ruta = self._descargar_con_reintento(insumo, fecha, carpeta, _abrir)
         if self.logger:
             self.logger.info("insumo_descargado",
                              extra={"insumo": insumo.prefijo, "fecha": str(fecha),
@@ -263,6 +270,38 @@ class NavegadorSelenium(NavegadorPrecia):
             el.click()
         except Exception:  # noqa: BLE001
             self._driver.execute_script("arguments[0].click();", el)
+
+    def _descargar_con_reintento(self, insumo: Insumo, fecha: date, carpeta: Path,
+                                 reabrir, intentos: int = 3,
+                                 timeout_intento: float = 45.0) -> Path:
+        """Ubica la fila, clica descargar y espera; si no baja en el intento,
+        REABRE la seccion (recarga + reelige fecha) y reintenta.
+
+        Replica la solucion manual observada: algunas descargas del portal
+        (p.ej. 800149496_Colf_NE) salen vacias en el primer intento y solo bajan
+        tras recargar la pagina y volver a pedir la fecha. Cada intento usa un
+        timeout corto para no esperar de mas antes de reintentar.
+        """
+        nombre = render_nombre(insumo.patron, fecha)
+        ultimo = None
+        for intento in range(1, intentos + 1):
+            antes = self._portal._archivos_en(carpeta)
+            link = self._buscar_multipagina(nombre, insumo.prefijo)
+            self._click_elemento(link)
+            try:
+                return self._portal._esperar_descarga(
+                    carpeta, insumo.prefijo, antes, timeout_seg=timeout_intento)
+            except Exception as e:  # noqa: BLE001 - PortalError (timeout) u otro
+                ultimo = e
+                if self.logger:
+                    self.logger.warning(
+                        "descarga_reintento",
+                        extra={"insumo": insumo.prefijo, "intento": intento,
+                               "de": intentos, "detalle": str(e)[:120]})
+                if intento < intentos:
+                    reabrir()   # recarga la seccion + reelige fecha, como manual
+        raise NavegadorError(
+            f"No se pudo descargar '{insumo.prefijo}' tras {intentos} intentos: {ultimo}")
 
     def _volcar_filas_tabla(self, tabla_id: str | None) -> None:
         """Registra en el log el texto real de TODAS las filas de la tabla,

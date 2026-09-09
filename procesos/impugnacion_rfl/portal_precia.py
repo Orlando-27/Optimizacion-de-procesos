@@ -287,7 +287,8 @@ class PortalPreciaSelenium(PortalRFL):
             pass
 
     def _esperar_descarga(
-        self, carpeta: Path, objetivo: str, antes: set[str], tam_minimo: int = 1
+        self, carpeta: Path, objetivo: str, antes: set[str], tam_minimo: int = 1,
+        timeout_seg: float | None = None,
     ) -> Path:
         """Espera a que TERMINE la descarga del archivo esperado (``objetivo``).
 
@@ -299,7 +300,7 @@ class PortalPreciaSelenium(PortalRFL):
         carpeta = Path(carpeta)
         pref = objetivo.upper()
         temporales = (".crdownload", ".tmp", ".part")
-        fin = time.time() + self.timeout_seg
+        fin = time.time() + (timeout_seg if timeout_seg is not None else self.timeout_seg)
         while time.time() < fin:
             descargando = False
             for p in carpeta.iterdir():
