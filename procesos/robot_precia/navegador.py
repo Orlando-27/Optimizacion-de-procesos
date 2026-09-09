@@ -265,7 +265,7 @@ class NavegadorSelenium(NavegadorPrecia):
 
     def _descargar_con_reintento(self, insumo: Insumo, fecha: date, carpeta: Path,
                                  reabrir, intentos: int = 3,
-                                 timeout_intento: float = 45.0) -> Path:
+                                 timeout_intento: float = 60.0) -> Path:
         """Ubica la fila, clica descargar y espera; si no baja en el intento,
         REABRE la seccion (recarga + reelige fecha) y reintenta.
 
@@ -514,7 +514,9 @@ class NavegadorSelenium(NavegadorPrecia):
         intentos = 0
         while True:
             try:
-                link = self._buscar_fila_descarga(nombre, prefijo, timeout=6)
+                # esperar a que no haya overlay/carga antes de buscar en la pagina
+                self._esperar_sin_overlay()
+                link = self._buscar_fila_descarga(nombre, prefijo, timeout=10)
                 # DIAGNOSTICO opcional: registrar el enlace de descarga que se
                 # encontro (HTML + texto de su fila) para depurar descargas que
                 # no generan archivo (p.ej. un enlace con estructura distinta).
@@ -539,25 +541,57 @@ class NavegadorSelenium(NavegadorPrecia):
                         "pagina de la tabla (¿publicado ese dia? ¿nombre correcto?)."
                     )
 
+    def _firma_tabla(self) -> str:
+        """Texto de las primeras filas descargables: sirve para detectar cuando
+        la tabla realmente cambio de pagina (en vez de un sleep fijo)."""
+        from selenium.webdriver.common.by import By
+        try:
+            filas = self._driver.find_elements(
+                By.XPATH, "//tr[.//a[.//img[contains(@src,'descargar')]]]")
+            return " || ".join(" ".join(f.text.split()) for f in filas[:3])
+        except Exception:  # noqa: BLE001
+            return ""
+
+    def _esperar_cambio_tabla(self, firma_previa: str, timeout: float = 12.0) -> None:
+        """Espera a que termine el ajax y la tabla muestre contenido nuevo."""
+        self._esperar_sin_overlay()
+        fin = time.time() + timeout
+        while time.time() < fin:
+            if self._firma_tabla() != firma_previa:
+                break
+            time.sleep(0.4)
+        time.sleep(0.5)  # pequeno margen de render
+
     def _ir_primera_pagina(self) -> None:
         from selenium.webdriver.common.by import By
         try:
             btn = self._driver.find_element(By.CSS_SELECTOR, ".ui-paginator-first")
             if "ui-state-disabled" not in (btn.get_attribute("class") or ""):
-                btn.click()
-                time.sleep(1.5)
+                firma = self._firma_tabla()
+                try:
+                    btn.click()
+                except Exception:  # noqa: BLE001
+                    self._driver.execute_script("arguments[0].click();", btn)
+                self._esperar_cambio_tabla(firma)
         except Exception:  # noqa: BLE001 - sin paginador (una sola pagina): seguir
             pass
 
     def _siguiente_pagina(self) -> bool:
-        """Va a la pagina siguiente. Devuelve False si no hay mas paginas."""
+        """Va a la pagina siguiente y ESPERA a que cargue (clave en PC lentos:
+        antes cambiaba de pagina con un sleep fijo y en la oficina buscaba en la
+        pagina 2 antes de que renderizara -> fallaban los ultimos insumos)."""
         from selenium.webdriver.common.by import By
         try:
             btn = self._driver.find_element(By.CSS_SELECTOR, ".ui-paginator-next")
             if "ui-state-disabled" in (btn.get_attribute("class") or ""):
                 return False
-            btn.click()
-            time.sleep(1.5)
+            firma = self._firma_tabla()
+            self._driver.execute_script("arguments[0].scrollIntoView({block:'center'});", btn)
+            try:
+                btn.click()
+            except Exception:  # noqa: BLE001
+                self._driver.execute_script("arguments[0].click();", btn)
+            self._esperar_cambio_tabla(firma)
             return True
         except Exception:  # noqa: BLE001
             return False
