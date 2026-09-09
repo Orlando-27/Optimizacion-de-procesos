@@ -151,7 +151,7 @@ def _componer_html_reporte(config, descargados, fallidos, fechas, hostname,
                     f"{html.escape(str(error_global))}</p>" if error_global else "")
     return f"""\
 <div style="font-family:Calibri,Arial,sans-serif;font-size:11pt;color:#1f1f1f">
-  <p><b style="color:{color}">Robot Precia — {estado}</b></p>
+  <p><b style="color:{color}">Robot Precia - {estado}</b></p>
   <table style="border-collapse:collapse;margin-bottom:10px">
     <tr><td style='padding:2px 10px;color:#555'><b>Fechas</b></td><td style='padding:2px 10px'>{fechas_txt}</td></tr>
     <tr><td style='padding:2px 10px;color:#555'><b>Descargados</b></td><td style='padding:2px 10px'>{len(descargados)}</td></tr>
@@ -160,12 +160,12 @@ def _componer_html_reporte(config, descargados, fallidos, fechas, hostname,
     <tr><td style='padding:2px 10px;color:#555'><b>Entorno</b></td><td style='padding:2px 10px'>{config.entorno}</td></tr>
   </table>
   {aviso_global}
-  <p style="margin:12px 0 4px;color:#1B7F3B"><b>✓ Descargados ({len(descargados)})</b></p>
+  <p style="margin:12px 0 4px;color:#1B7F3B"><b>Descargados ({len(descargados)})</b></p>
   {_tabla_insumos(descargados, [("insumo","Insumo"),("fecha","Fecha"),("archivo","Archivo")])}
-  <p style="margin:12px 0 4px;color:#B00020"><b>✗ No descargados ({len(fallidos)})</b></p>
+  <p style="margin:12px 0 4px;color:#B00020"><b>No descargados ({len(fallidos)})</b></p>
   {_tabla_insumos(fallidos, [("insumo","Insumo"),("fecha","Fecha"),("error","Motivo")])}
   <p style="color:#888;font-size:9pt;margin-top:14px">Reporte automático del Motor de
-     Optimización de Procesos · {datetime.now():%Y-%m-%d %H:%M}</p>
+     Optimización de Procesos - {datetime.now():%Y-%m-%d %H:%M}</p>
 </div>"""
 
 
@@ -191,11 +191,11 @@ def _componer_html(config: Config, res: ProcessResult) -> str:
     )
     return f"""\
 <div style="font-family:Calibri,Arial,sans-serif;font-size:11pt;color:#1f1f1f">
-  <p><b style="color:#B00020">El proceso «{html.escape(res.process_id)}» NO se pudo ejecutar.</b></p>
+  <p><b style="color:#B00020">El proceso "{html.escape(res.process_id)}" NO se pudo ejecutar.</b></p>
   <table style="border-collapse:collapse">{tabla}</table>
   <p style="margin-top:12px;color:#555">Detalle técnico:</p>
   <pre style="background:#f6f6f6;border:1px solid #ddd;padding:8px;
               font-size:9pt;white-space:pre-wrap">{tb_corto}</pre>
   <p style="color:#888;font-size:9pt">Aviso automático del Motor de Optimización
-     de Procesos · {datetime.now():%Y-%m-%d %H:%M}</p>
+     de Procesos - {datetime.now():%Y-%m-%d %H:%M}</p>
 </div>"""

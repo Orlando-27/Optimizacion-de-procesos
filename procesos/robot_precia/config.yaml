@@ -1,7 +1,7 @@
 # =====================================================================
 #  Configuracion TECNICA del Robot Precia (descarga diaria de insumos)
 # ---------------------------------------------------------------------
-#  ⚠️  Las RUTAS y los CORREOS reales se editan en  ->  parametros.yaml
+#  IMPORTANTE:  Las RUTAS y los CORREOS reales se editan en  ->  parametros.yaml
 #      (ese archivo se superpone sobre este). Aqui quedan solo valores
 #      por defecto y ajustes tecnicos (backends, timeouts).
 # =====================================================================

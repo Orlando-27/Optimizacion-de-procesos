@@ -1,44 +1,44 @@
-# Robot Precia — Descarga diaria de insumos
+# Robot Precia - Descarga diaria de insumos
 
 Robot de **web scraping (Selenium)** que descarga los insumos del portal de
 **Precia** todos los días de forma desatendida (Programador de Tareas de Windows).
 
-Está construido sobre un **contrato común** (`extract → transform → load →
+Está construido sobre un **contrato común** (`extract -> transform -> load ->
 validate`) con registro de corridas, reintentos, idempotencia y alertas por
 correo. Diseñado para Windows pero **portable a GCP** (todo el I/O específico
-—portal, correo, almacenamiento— está detrás de adaptadores intercambiables).
+-portal, correo, almacenamiento- está detrás de adaptadores intercambiables).
 
 > Proceso: [`procesos/robot_precia/DOCUMENTACION.md`](procesos/robot_precia/DOCUMENTACION.md)
-> · Puesta en marcha en 2 máquinas: [`PROGRAMADOR_DE_TAREAS.md`](procesos/robot_precia/PROGRAMADOR_DE_TAREAS.md)
+> - Puesta en marcha en 2 máquinas: [`PROGRAMADOR_DE_TAREAS.md`](procesos/robot_precia/PROGRAMADOR_DE_TAREAS.md)
 
 ---
 
 ## Estructura
 
 ```
-core/                 ← motor genérico, reutilizable
-├── contract.py       ← Proceso(ABC), ProcessContext/Result, RunStatus, run()
-├── config.py         ← carga config.yaml + .env (pydantic)
-├── secrets.py        ← keyring (Windows Credential Manager) → .env
-├── logging_config.py ← logs JSON con run_id/process_id + enmascarado de secretos
-├── run_store.py      ← registro de corridas (SQLite, listo para BigQuery)
-├── runner.py         ← ejecuta un proceso, persiste y notifica
-├── notifications.py  ← correo de reporte (descargados/fallidos) y alertas
-└── adapters/         ← MailClient / Storage / Portal (+ implementaciones)
+core/                 <- motor genérico, reutilizable
+|-- contract.py       <- Proceso(ABC), ProcessContext/Result, RunStatus, run()
+|-- config.py         <- carga config.yaml + .env (pydantic)
+|-- secrets.py        <- keyring (Windows Credential Manager) -> .env
+|-- logging_config.py <- logs JSON con run_id/process_id + enmascarado de secretos
+|-- run_store.py      <- registro de corridas (SQLite, listo para BigQuery)
+|-- runner.py         <- ejecuta un proceso, persiste y notifica
+|-- notifications.py  <- correo de reporte (descargados/fallidos) y alertas
+`-- adapters/         <- MailClient / Storage / Portal (+ implementaciones)
 
-procesos/robot_precia/      ← el robot (ver su DOCUMENTACION.md)
-├── process.py        ← contrato ETL + CLI
-├── navegador.py      ← navegación/descarga (3 flujos: directo/agrupador/consulta)
-├── portal_precia.py  ← login/driver/datepicker/espera de descarga (Selenium)
-├── secciones.py      ← mapa de áreas/secciones del portal
-├── insumos.yaml      ← catálogo de insumos a descargar
-├── fechas.py         ← lógica t-1 (+ fin de semana los lunes)
-├── parametros.yaml   ← ⭐ RUTAS y CORREOS reales (lo edita el usuario)
-└── config.yaml       ← ajustes técnicos (backends, timeouts)
+procesos/robot_precia/      <- el robot (ver su DOCUMENTACION.md)
+|-- process.py        <- contrato ETL + CLI
+|-- navegador.py      <- navegación/descarga (3 flujos: directo/agrupador/consulta)
+|-- portal_precia.py  <- login/driver/datepicker/espera de descarga (Selenium)
+|-- secciones.py      <- mapa de áreas/secciones del portal
+|-- insumos.yaml      <- catálogo de insumos a descargar
+|-- fechas.py         <- lógica t-1 (+ fin de semana los lunes)
+|-- parametros.yaml   <- RUTAS y CORREOS reales (lo edita el usuario)
+`-- config.yaml       <- ajustes técnicos (backends, timeouts)
 
-scripts/                    ← verificar_prod (chequeo previo) · explorar_robot/portal
-run_robot_precia.bat        ← entrypoint máquina PRIMARIA (04:00)
-run_robot_precia_respaldo.bat ← entrypoint máquina RESPALDO (05:00, --respaldo)
+scripts/                    <- verificar_prod (chequeo previo) - explorar_robot/portal
+run_robot_precia.bat        <- entrypoint máquina PRIMARIA (04:00)
+run_robot_precia_respaldo.bat <- entrypoint máquina RESPALDO (05:00, --respaldo)
 ```
 
 ---

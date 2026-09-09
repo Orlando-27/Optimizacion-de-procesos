@@ -1,4 +1,4 @@
-# Robot Precia — Programador de Tareas (2 máquinas: 04:00 + 05:00 respaldo)
+# Robot Precia - Programador de Tareas (2 máquinas: 04:00 + 05:00 respaldo)
 
 Guía para dejar el robot corriendo solo, con **una máquina primaria a las 04:00**
 y **una máquina de respaldo a las 05:00** que solo actúa si la primera falló.
@@ -11,15 +11,15 @@ y **una máquina de respaldo a las 05:00** que solo actúa si la primera falló.
   insumos a la **carpeta de destino**.
 - **Máquina B (respaldo, 05:00)** ejecuta `run_robot_precia_respaldo.bat`
   (`--respaldo`). Antes de abrir el navegador **revisa esa misma carpeta**:
-  - Si **está todo** → no hace nada (estado `SKIPPED`) y manda un correo
+  - Si **está todo** -> no hace nada (estado `SKIPPED`) y manda un correo
     `[RESPALDO] nada que hacer`.
-  - Si **falta algo** (A se apagó, se reinició, o falló) → descarga **solo lo que
+  - Si **falta algo** (A se apagó, se reinició, o falló) -> descarga **solo lo que
     falta**.
 
 > **Requisito clave:** las dos máquinas deben apuntar a la **MISMA carpeta de
 > destino** (una ruta de red compartida, p. ej. `\\servidor\insumos\precia`).
 > Si cada una guarda en su disco local, el respaldo no puede "ver" lo que bajó la
-> primaria. Configúrala en `parametros.yaml` → `carpeta_destino.prod`.
+> primaria. Configúrala en `parametros.yaml` -> `carpeta_destino.prod`.
 
 ---
 
@@ -44,21 +44,21 @@ y **una máquina de respaldo a las 05:00** que solo actúa si la primera falló.
 
 ---
 
-## 2. Crear la tarea — Máquina A (primaria, 04:00)
+## 2. Crear la tarea - Máquina A (primaria, 04:00)
 
 **Opción GUI (Programador de tareas):**
 
-1. Abre **Programador de tareas** → **Crear tarea…** (no "tarea básica").
+1. Abre **Programador de tareas** -> **Crear tarea...** (no "tarea básica").
 2. **General:**
    - Nombre: `Robot Precia - Primaria 04:00`.
    - Marca **"Ejecutar solo cuando el usuario haya iniciado sesión"**.
    - (Opcional) **"Ejecutar con los privilegios más altos"**.
-3. **Desencadenadores** → **Nuevo…**:
+3. **Desencadenadores** -> **Nuevo...**:
    - Diariamente, hora **04:00**, "Repetir cada **1** día". Aceptar.
-4. **Acciones** → **Nuevo…**:
+4. **Acciones** -> **Nuevo...**:
    - Acción: *Iniciar un programa*.
    - Programa o script: `C:\motor-procesos-v2\run_robot_precia.bat`
-   - **Iniciar en (opcional):** `C:\motor-procesos-v2`  ← (¡importante!)
+   - **Iniciar en (opcional):** `C:\motor-procesos-v2`  <- (¡importante!)
 5. **Condiciones:** desmarca "Iniciar la tarea solo si el equipo está con CA" si
    es un portátil que a veces está con batería.
 6. **Configuración:** marca "Permitir ejecutar la tarea a petición" y
@@ -73,12 +73,12 @@ schtasks /Create /TN "Robot Precia - Primaria 04:00" /TR "C:\motor-procesos-v2\r
 
 ---
 
-## 3. Crear la tarea — Máquina B (respaldo, 05:00)
+## 3. Crear la tarea - Máquina B (respaldo, 05:00)
 
 Igual que la sección 2, pero:
 - Nombre: `Robot Precia - Respaldo 05:00`.
 - Hora del desencadenador: **05:00**.
-- Acción → Programa: `C:\motor-procesos-v2\run_robot_precia_respaldo.bat`
+- Acción -> Programa: `C:\motor-procesos-v2\run_robot_precia_respaldo.bat`
   (este ya corre con `--respaldo`).
 
 **Línea de comandos:**
@@ -92,10 +92,10 @@ schtasks /Create /TN "Robot Precia - Respaldo 05:00" /TR "C:\motor-procesos-v2\r
 
 ---
 
-## 4. Chequeo previo (antes de programar) — recomendado
+## 4. Chequeo previo (antes de programar) - recomendado
 
 Valida en segundos que la **carpeta de destino** se puede escribir, que están las
-**credenciales** del portal, y que Chrome/Selenium responden — sin descargar nada
+**credenciales** del portal, y que Chrome/Selenium responden - sin descargar nada
 ni imprimir secretos:
 
 ```
@@ -109,7 +109,7 @@ Si todo lo crítico está OK termina con `TODO LO CRITICO ESTA LISTO`. Córrelo 
 
 ## 5. Probar sin esperar a la madrugada
 
-- Ejecutar la tarea a demanda: Programador → clic derecho en la tarea →
+- Ejecutar la tarea a demanda: Programador -> clic derecho en la tarea ->
   **Ejecutar**. O por consola:
   ```
   schtasks /Run /TN "Robot Precia - Primaria 04:00"
@@ -123,9 +123,9 @@ Si todo lo crítico está OK termina con `TODO LO CRITICO ESTA LISTO`. Córrelo 
 ## 6. Qué correo llega
 
 Cada corrida envía **un** correo de reporte a `alertas.destinatarios` con:
-- Asunto: `[OK] Robot Precia: N OK / M fallaron (NOMBRE-EQUIPO)` — o `[ALERTA] …`
-  si hubo fallos, o `[RESPALDO] …` desde la máquina B.
-- Dos listas: **✓ descargados** (insumo, fecha, archivo) y **✗ no descargados**
+- Asunto: `[OK] Robot Precia: N OK / M fallaron (NOMBRE-EQUIPO)` - o `[ALERTA] ...`
+  si hubo fallos, o `[RESPALDO] ...` desde la máquina B.
+- Dos listas: **descargados** (insumo, fecha, archivo) y **no descargados**
   (insumo, fecha, motivo).
 - El **nombre del equipo** que lo envió, para distinguir A de B.
 
