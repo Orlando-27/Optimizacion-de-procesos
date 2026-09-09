@@ -83,9 +83,22 @@ SECCIONES: dict[str, dict] = {
     "Clientes Productos Estructurados": {
         "landing_url": "https://www.precia.co/index.php/productos-estructurados/",  # CONFIRMADO
         "iframe": "BranderFrame",
+        # CONFIRMADO (volcado del portal): flujo "consulta". El boton #conpro
+        # carga consultaProductos.xhtml; ahi se elige la fecha en un datepicker
+        # POPUP (no inline) y la tabla 'Nombre Archivo / Descargar' se refresca
+        # sola (no hay boton Buscar). Se ubica el archivo por su nombre.
+        "flujo": "consulta",
+        "boton_menu": "#conpro",
         "botones": {
-            "Consulta de productos": TODO,
+            "Consulta de productos": "#conpro",           # consultaProductos.xhtml
+            # NOTA: 'Históricos Betas > Curva de TES B en Pesos' NO existe en el
+            # menu de Productos Estructurados. 'Historico betas' (#hisbe) esta en
+            # Renta Fija; ese insumo esta pendiente de reubicar (ver insumos.yaml).
             "Históricos Betas > Curva de TES B en Pesos": TODO,
+        },
+        "sel": {
+            "fecha": "formConsultaProductos:fechaIni",        # span datepicker popup
+            "tabla": "formConsultaProductos:tblConsultaProductos",
         },
         "filtros": {},
     },

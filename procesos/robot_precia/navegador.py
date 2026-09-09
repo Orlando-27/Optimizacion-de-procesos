@@ -125,9 +125,13 @@ class NavegadorSelenium(NavegadorPrecia):
                                         "archivo": ya.name})
             return ya
 
-        # Enrutar segun el flujo del area: "agrupador" (Derivados) o "directo" (RF).
-        if SECCIONES[insumo.area].get("flujo") == "agrupador":
+        # Enrutar segun el flujo del area:
+        #   "agrupador" (Derivados) | "consulta" (Prod. Estructurados) | directo (RF/RV)
+        flujo = SECCIONES[insumo.area].get("flujo")
+        if flujo == "agrupador":
             return self._descargar_agrupador(insumo, fecha, carpeta)
+        if flujo == "consulta":
+            return self._descargar_consulta(insumo, fecha, carpeta)
 
         ctx_nuevo = (insumo.area, insumo.seccion, fecha)
         # Solo re-navegar si cambio la seccion o la fecha (optimizacion).
@@ -148,6 +152,38 @@ class NavegadorSelenium(NavegadorPrecia):
         nombre = render_nombre(insumo.patron, fecha)
         # Busca el insumo recorriendo TODAS las paginas de la tabla (no depende
         # de un numero de pagina fijo: el archivo puede estar en 1, 2, ...).
+        link = self._buscar_multipagina(nombre, insumo.prefijo)
+        link.click()
+        ruta = self._portal._esperar_descarga(carpeta, insumo.prefijo, antes)
+        if self.logger:
+            self.logger.info("insumo_descargado",
+                             extra={"insumo": insumo.prefijo, "fecha": str(fecha),
+                                    "archivo": Path(ruta).name})
+        return ruta
+
+    # ---------------------------------------- flujo CONSULTA (Prod. Estructurados)
+    def _descargar_consulta(self, insumo: Insumo, fecha: date, carpeta: Path) -> Path:
+        """Flujo de Productos Estructurados > Consulta de productos.
+
+        menu (#conpro) -> datepicker POPUP -> la tabla 'Nombre Archivo /
+        Descargar' se refresca sola (sin boton Buscar) -> ubicar por nombre ->
+        descargar. Reutiliza el popup de fecha y la busqueda multipagina.
+        """
+        import os
+
+        cfg = SECCIONES[insumo.area]
+        sel = cfg["sel"]
+        ctx_nuevo = (insumo.area, insumo.seccion, fecha)
+        if ctx_nuevo != self._contexto:
+            self._abrir_seccion(insumo)                    # landing -> #conpro -> iframe
+            self._seleccionar_fecha_popup(sel["fecha"], fecha)
+            time.sleep(3)                                  # ajax refresca la tabla
+            self._contexto = ctx_nuevo
+            if os.environ.get("ROBOT_DUMP_FILAS"):
+                self._volcar_filas_tabla(sel.get("tabla"))
+
+        antes = self._portal._archivos_en(carpeta)
+        nombre = render_nombre(insumo.patron, fecha)
         link = self._buscar_multipagina(nombre, insumo.prefijo)
         link.click()
         ruta = self._portal._esperar_descarga(carpeta, insumo.prefijo, antes)
