@@ -5,9 +5,11 @@
 #  ni config.yaml: lo que pongas aquí manda.
 #
 #  Cómo editar:
-#   - Usa comillas dobles en las rutas.
-#   - Las rutas de red van en formato UNC: \\servidor\carpeta\... (NO "M:\").
-#     En YAML, cada "\" se escribe doble: \\\\servidor\\carpeta\\...
+#   - RUTAS DE WINDOWS: usa comillas SIMPLES '...'  (asi los \ van tal cual,
+#     sin duplicarlos, y no da error de YAML).
+#       Local:  prod: 'C:\Users\jb45104\...\INSUMOS'
+#       Red:    prod: '\\servidor\carpeta\subcarpeta\INSUMOS'
+#   - Usa formato UNC (\\servidor\...) para rutas de red; NO uses "M:\".
 #   - Guarda el archivo y vuelve a ejecutar el robot. Listo.
 # =====================================================================
 
