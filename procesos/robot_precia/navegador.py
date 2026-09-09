@@ -191,7 +191,13 @@ class NavegadorSelenium(NavegadorPrecia):
 
         antes = self._portal._archivos_en(carpeta)
         nombre = render_nombre(insumo.patron, fecha)
-        link = self._buscar_multipagina(nombre, insumo.prefijo)
+        try:
+            link = self._buscar_multipagina(nombre, insumo.prefijo)
+        except NavegadorError:
+            # Diagnostico: volcar los nombres REALES de las filas de la tabla
+            # para saber por que no coincidio (formato de fecha, nombre distinto).
+            self._volcar_filas_tabla(sel.get("tabla"))
+            raise
         link.click()
         ruta = self._portal._esperar_descarga(carpeta, insumo.prefijo, antes)
         if self.logger:
@@ -199,6 +205,35 @@ class NavegadorSelenium(NavegadorPrecia):
                              extra={"insumo": insumo.prefijo, "fecha": str(fecha),
                                     "archivo": Path(ruta).name})
         return ruta
+
+    def _volcar_filas_tabla(self, tabla_id: str | None) -> None:
+        """Registra en el log el texto real de cada fila de la tabla actual.
+
+        Sirve para descubrir como aparecen los archivos en el portal (nombre y
+        formato de fecha) cuando la busqueda por nombre/prefijo no encuentra la
+        fila. Se limita a las primeras 40 filas para no saturar el log.
+        """
+        from selenium.webdriver.common.by import By
+        if not self.logger:
+            return
+        try:
+            if tabla_id:
+                cuerpo = self._driver.find_element(By.ID, f"{tabla_id}_data")
+                filas = cuerpo.find_elements(By.XPATH, "./tr")
+            else:
+                filas = self._driver.find_elements(
+                    By.XPATH, "//tr[.//a[.//img[contains(@src,'descargar')]]]")
+            textos = []
+            for fila in filas[:40]:
+                t = " | ".join(
+                    c.text.strip() for c in fila.find_elements(By.XPATH, "./td")
+                    if c.text.strip())
+                if t:
+                    textos.append(t)
+            self.logger.warning("agrupador_filas_reales",
+                                 extra={"n": len(textos), "filas": textos})
+        except Exception as e:  # noqa: BLE001
+            self.logger.warning("agrupador_filas_error", extra={"detalle": str(e)})
 
     def _seleccionar_grupo(self, dropdown_id: str, etiqueta: str) -> None:
         """Selecciona una opcion en un PrimeFaces SelectOneMenu por su etiqueta.
