@@ -182,6 +182,12 @@ class NavegadorSelenium(NavegadorPrecia):
                                  extra={"area": insumo.area, "grupo": grupo,
                                         "fecha": str(fecha), "filas_descargables": n})
             self._portal._screenshot(self._driver, f"agrupador_{grupo.replace(' ', '_')}")
+            # DIAGNOSTICO (temporal): volcar en el log los prefijos reales de
+            # todas las filas del grupo, para ajustar insumos.yaml a los valores
+            # exactos del portal. Se ejecuta una sola vez por grupo/fecha.
+            self._volcar_filas_tabla(sel.get("tabla"))
+            # El volcado deja el paginador en la ultima pagina; _buscar_multipagina
+            # vuelve a la primera antes de buscar, asi que no hay conflicto.
 
         # NOTA: NO se aplica filtro por la columna "Prefijo". La seleccion del
         # grupo ya acota la tabla a unas pocas decenas de archivos y la busqueda
@@ -191,13 +197,7 @@ class NavegadorSelenium(NavegadorPrecia):
 
         antes = self._portal._archivos_en(carpeta)
         nombre = render_nombre(insumo.patron, fecha)
-        try:
-            link = self._buscar_multipagina(nombre, insumo.prefijo)
-        except NavegadorError:
-            # Diagnostico: volcar los nombres REALES de las filas de la tabla
-            # para saber por que no coincidio (formato de fecha, nombre distinto).
-            self._volcar_filas_tabla(sel.get("tabla"))
-            raise
+        link = self._buscar_multipagina(nombre, insumo.prefijo)
         link.click()
         ruta = self._portal._esperar_descarga(carpeta, insumo.prefijo, antes)
         if self.logger:
@@ -207,29 +207,34 @@ class NavegadorSelenium(NavegadorPrecia):
         return ruta
 
     def _volcar_filas_tabla(self, tabla_id: str | None) -> None:
-        """Registra en el log el texto real de cada fila de la tabla actual.
+        """Registra en el log el texto real de TODAS las filas de la tabla,
+        recorriendo todas las paginas del paginador.
 
-        Sirve para descubrir como aparecen los archivos en el portal (nombre y
-        formato de fecha) cuando la busqueda por nombre/prefijo no encuentra la
-        fila. Se limita a las primeras 40 filas para no saturar el log.
+        Sirve para descubrir como aparecen los archivos en el portal (columna
+        Prefijo y nombre) y asi ajustar ``insumos.yaml`` a los valores reales.
+        Se limita a 80 filas en total para no saturar el log.
         """
         from selenium.webdriver.common.by import By
         if not self.logger:
             return
         try:
-            if tabla_id:
-                cuerpo = self._driver.find_element(By.ID, f"{tabla_id}_data")
-                filas = cuerpo.find_elements(By.XPATH, "./tr")
-            else:
-                filas = self._driver.find_elements(
-                    By.XPATH, "//tr[.//a[.//img[contains(@src,'descargar')]]]")
-            textos = []
-            for fila in filas[:40]:
-                t = " | ".join(
-                    c.text.strip() for c in fila.find_elements(By.XPATH, "./td")
-                    if c.text.strip())
-                if t:
-                    textos.append(t)
+            self._ir_primera_pagina()
+            textos: list[str] = []
+            paginas = 0
+            while True:
+                if tabla_id:
+                    cuerpo = self._driver.find_element(By.ID, f"{tabla_id}_data")
+                    filas = cuerpo.find_elements(By.XPATH, "./tr")
+                else:
+                    filas = self._driver.find_elements(
+                        By.XPATH, "//tr[.//a[.//img[contains(@src,'descargar')]]]")
+                for fila in filas:
+                    t = " ".join(fila.text.split())
+                    if t:
+                        textos.append(t)
+                paginas += 1
+                if len(textos) >= 80 or paginas > 20 or not self._siguiente_pagina():
+                    break
             self.logger.warning("agrupador_filas_reales",
                                  extra={"n": len(textos), "filas": textos})
         except Exception as e:  # noqa: BLE001
@@ -455,12 +460,17 @@ class NavegadorSelenium(NavegadorPrecia):
     def _buscar_fila_descarga(self, nombre: str, prefijo: str, timeout: int = 20):
         """Ubica el enlace de descarga de la fila del insumo.
 
+        La tabla del agrupador identifica cada archivo por su columna 'Prefijo'
+        (p.ej. 'SwapCC_DTF_Diaria_') y NO muestra la fecha en el nombre. Ademas
+        la tabla esta en modo 'reflow' (responsive): cada celda antepone el
+        titulo de su columna, de modo que el texto de la celda Prefijo es
+        'Prefijo SwapCC_DTF_Diaria_'. Por eso se busca con CONTAINS (no
+        starts-with) el prefijo dentro de la fila.
+
         Estrategia (de mas a menos preciso), con timeout CORTO para no colgarse:
-          1. Fila cuyo data-rk/texto CONTIENE el nombre completo (con fecha) ->
-             desambigua nombres que comparten prefijo (p.ej. los dos 'MX...').
-          2. Fila cuyo data-rk/texto EMPIEZA por el prefijo (fallback: prefijos
-             unicos como 'Fwd_USDCOP_Diaria_' cuyo formato de fecha no conocemos).
-        La imagen de descarga siempre es descargar.png.
+          1. Fila cuyo texto CONTIENE el nombre completo (con fecha), por si
+             algun archivo si trae la fecha en el nombre.
+          2. Fila cuyo texto CONTIENE el prefijo (caso normal del agrupador).
         """
         from selenium.webdriver.common.by import By
         from selenium.webdriver.support import expected_conditions as EC
@@ -472,8 +482,7 @@ class NavegadorSelenium(NavegadorPrecia):
             f"//tr[contains(@data-rk, '{nombre}')]//a[.//img[contains(@src,'descargar')]]",
             f"//tr[.//*[contains(normalize-space(.), '{nombre}')]]"
             f"//a[.//img[contains(@src,'descargar')]]",
-            f"//tr[starts-with(@data-rk, '{prefijo}')]//a[.//img[contains(@src,'descargar')]]",
-            f"//tr[.//*[starts-with(normalize-space(.), '{prefijo}')]]"
+            f"//tr[.//*[contains(normalize-space(.), '{prefijo}')]]"
             f"//a[.//img[contains(@src,'descargar')]]",
         ]
         for xp in candidatos:
