@@ -95,8 +95,19 @@ def main() -> int:
             print(f">> Clic en {args.boton} ...")
             wait.until(lambda d: d.find_element(By.CSS_SELECTOR, args.boton)).click()
             time.sleep(6)
+        # En modo headed, PAUSA para que navegues a mano hasta la seccion exacta
+        # (menu del area de clientes) y dejes a la vista la tabla de descarga.
+        if not args.volcar:
+            print("\n" + "=" * 64)
+            print(" En la ventana de Chrome: navega hasta la SECCION que quieres")
+            print(" mapear (p.ej. el menu del area de clientes) y deja a la vista")
+            print(" la tabla con la fecha y el boton de descarga.")
+            print(" NO cierres Chrome. Luego vuelve aqui y presiona ENTER.")
+            print("=" * 64)
+            input(">> ENTER para volcar la pagina + el iframe...")
         _dump_todo(driver, "seccion")
-        print("\n>> Volcado en logs/. Pasame los .html/.png para completar secciones.py")
+        print("\n>> Volcado en logs\\robot_seccion_*.html (+ iframe). Pasame esos")
+        print("   archivos y los completo en procesos/robot_precia/secciones.py.")
         if not args.volcar:
             input(">> ENTER para cerrar...")
     finally:
