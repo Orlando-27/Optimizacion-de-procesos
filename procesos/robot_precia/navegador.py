@@ -182,12 +182,15 @@ class NavegadorSelenium(NavegadorPrecia):
                                  extra={"area": insumo.area, "grupo": grupo,
                                         "fecha": str(fecha), "filas_descargables": n})
             self._portal._screenshot(self._driver, f"agrupador_{grupo.replace(' ', '_')}")
-            # DIAGNOSTICO (temporal): volcar en el log los prefijos reales de
-            # todas las filas del grupo, para ajustar insumos.yaml a los valores
-            # exactos del portal. Se ejecuta una sola vez por grupo/fecha.
-            self._volcar_filas_tabla(sel.get("tabla"))
-            # El volcado deja el paginador en la ultima pagina; _buscar_multipagina
-            # vuelve a la primera antes de buscar, asi que no hay conflicto.
+            # DIAGNOSTICO opcional: con la variable de entorno ROBOT_DUMP_FILAS=1
+            # se vuelca en el log ('agrupador_filas_reales') el prefijo real de
+            # todas las filas del grupo. Util para mapear un area nueva o depurar;
+            # apagado por defecto para no ralentizar la corrida de las 4 a.m.
+            import os
+            if os.environ.get("ROBOT_DUMP_FILAS"):
+                self._volcar_filas_tabla(sel.get("tabla"))
+                # El volcado deja el paginador en la ultima pagina;
+                # _buscar_multipagina vuelve a la primera antes de buscar.
 
         # NOTA: NO se aplica filtro por la columna "Prefijo". La seleccion del
         # grupo ya acota la tabla a unas pocas decenas de archivos y la busqueda

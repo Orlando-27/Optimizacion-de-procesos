@@ -47,11 +47,21 @@ def fmt_yyyy_mm_dd(f: date) -> str:
     return f.strftime("%Y_%m_%d")
 
 
+def fmt_yyyymmdd(f: date) -> str:
+    """YYYYMMDD -> p.ej. 20260908 (usado por los archivos del agrupador Derivados)."""
+    return f.strftime("%Y%m%d")
+
+
 # Mapa de patron declarado en el manifiesto -> funcion formateadora.
+# IMPORTANTE: el orden importa cuando un token es prefijo de otro. 'YYYY_MM_DD'
+# se evalua antes que 'YYYYMMDD' porque llevan claves distintas, pero ambos
+# empiezan por 'YYYY'; como el reemplazo es por marca exacta ('{TOKEN}') no hay
+# colision. Se listan de mas especifico a menos.
 PATRONES_FECHA = {
+    "YYYY_MM_DD": fmt_yyyy_mm_dd,
+    "YYYYMMDD": fmt_yyyymmdd,
     "MMDDYY": fmt_mmddyy,
     "DDMMYY": fmt_ddmmyy,
-    "YYYY_MM_DD": fmt_yyyy_mm_dd,
 }
 
 
