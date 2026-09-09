@@ -162,7 +162,8 @@ class NavegadorSelenium(NavegadorPrecia):
         sel = cfg["sel"]
         grupo = cfg["grupos"][insumo.seccion]
         # Cache por (area, grupo, fecha): solo re-selecciona grupo+fecha+Buscar
-        # cuando cambian; el filtro por columna se re-aplica por insumo.
+        # cuando cambian. Todos los insumos de un mismo grupo/fecha comparten la
+        # misma tabla, asi que la navegacion pesada se hace una sola vez.
         ctx_nuevo = (insumo.area, grupo, fecha)
         if ctx_nuevo != self._contexto:
             self._abrir_seccion(insumo)  # landing -> #descagrup -> iframe
@@ -172,9 +173,21 @@ class NavegadorSelenium(NavegadorPrecia):
             self._clic(sel["buscar"])
             time.sleep(3)  # cargar la tabla (formDescarga2)
             self._contexto = ctx_nuevo
+            # Diagnostico: cuantas filas/enlaces de descarga cargaron para este
+            # grupo+fecha. Si es 0, el problema es la seleccion (grupo/fecha) o
+            # que ese dia no se publico nada, NO la busqueda de un insumo puntual.
+            n = self._contar_descargas_visibles()
+            if self.logger:
+                self.logger.info("agrupador_tabla_cargada",
+                                 extra={"area": insumo.area, "grupo": grupo,
+                                        "fecha": str(fecha), "filas_descargables": n})
+            self._portal._screenshot(self._driver, f"agrupador_{grupo.replace(' ', '_')}")
 
-        # Filtro por columna (FWD/SWAPCC). Se limpia y re-aplica por insumo.
-        self._filtrar_columna(cfg.get("filtro_columna"), insumo.filtro)
+        # NOTA: NO se aplica filtro por la columna "Prefijo". La seleccion del
+        # grupo ya acota la tabla a unas pocas decenas de archivos y la busqueda
+        # multipagina localiza cada insumo por su nombre completo (o prefijo).
+        # Un filtro de columna con un valor equivocado (p.ej. 'Matriz_TC_' no
+        # empieza por 'FWD') OCULTARIA la fila objetivo y no se descargaria nada.
 
         antes = self._portal._archivos_en(carpeta)
         nombre = render_nombre(insumo.patron, fecha)
@@ -188,17 +201,41 @@ class NavegadorSelenium(NavegadorPrecia):
         return ruta
 
     def _seleccionar_grupo(self, dropdown_id: str, etiqueta: str) -> None:
-        """Selecciona una opcion en un PrimeFaces SelectOneMenu por su etiqueta."""
+        """Selecciona una opcion en un PrimeFaces SelectOneMenu por su etiqueta.
+
+        El menu 'autAgrupador' es filtrable (trae un input '<id>_filter'). Si
+        existe, se escribe la etiqueta para acotar la lista antes de clicar el
+        item; asi se evita depender del scroll con 13 grupos. Se matchea por
+        data-label normalizando espacios (algunas etiquetas traen doble espacio,
+        p.ej. 'Insumos Swaps  Internacionales').
+        """
         from selenium.webdriver.common.by import By
         from selenium.webdriver.support import expected_conditions as EC
 
         self._wait.until(EC.element_to_be_clickable((By.ID, dropdown_id))).click()
-        # El panel de items es <ul id="<dropdown>_items">; se matchea por data-label
-        # normalizando espacios (algunas etiquetas traen doble espacio).
+        time.sleep(0.5)
+        # Si el SelectOneMenu tiene caja de filtro, escribir para acotar.
+        try:
+            caja = self._driver.find_element(By.ID, f"{dropdown_id}_filter")
+            caja.clear()
+            caja.send_keys(etiqueta.split()[1] if len(etiqueta.split()) > 1 else etiqueta)
+            time.sleep(0.7)
+        except Exception:  # noqa: BLE001 - menu sin filtro: se clica directo
+            pass
+        # El panel de items es <ul id="<dropdown>_items">.
         xp = (f"//ul[@id='{dropdown_id}_items']"
               f"/li[normalize-space(@data-label)='{etiqueta}']")
         self._wait.until(EC.element_to_be_clickable((By.XPATH, xp))).click()
         time.sleep(1)
+
+    def _contar_descargas_visibles(self) -> int:
+        """Cuenta los enlaces de descarga visibles en la tabla actual."""
+        from selenium.webdriver.common.by import By
+        try:
+            return len(self._driver.find_elements(
+                By.XPATH, "//a[.//img[contains(@src,'descargar')]]"))
+        except Exception:  # noqa: BLE001
+            return -1
 
     def _seleccionar_fecha_popup(self, fecha_span_id: str, fecha: date) -> None:
         """Abre el datepicker popup (boton dentro del span) y selecciona el dia."""
