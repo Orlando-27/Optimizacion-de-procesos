@@ -63,7 +63,7 @@ insumos:
   - {categoria: "Derivados SWAP Local", prefijo: "SwapCC2_COP_Colateral_USD_Diaria_", patron: "SwapCC2_COP_Colateral_USD_Diaria_{YYYYMMDD}", area: "Clientes Derivados", seccion: "Descargar Archivo Agrupador > Insumos Locales", pagina: 1, filtro: "SWAPCC"}
 
   # ---------------- Derivados SWAP Internacional (PAGINA 1) ----------------
-  - {categoria: "Derivados SWAP Internacional", prefijo: "SwapCC2_EURCOP_Diaria", patron: "SwapCC2_EURCOP_Diaria{YYYYMMDD}", area: "Clientes Derivados", seccion: "Descargar Archivo Agrupador > Insumos Swaps Internacionales", pagina: 1, filtro: null}
+  - {categoria: "Derivados SWAP Internacional", prefijo: "SwapCC2_EURCOP_Diaria", patron: "SwapCC2_EURCOP_Diaria_{YYYYMMDD}", area: "Clientes Derivados", seccion: "Descargar Archivo Agrupador > Insumos Swaps Internacionales", pagina: 1, filtro: null}
   - {categoria: "Derivados SWAP Internacional", prefijo: "SwapCC_USDOIS_Diaria_", patron: "SwapCC_USDOIS_Diaria_{YYYYMMDD}", area: "Clientes Derivados", seccion: "Descargar Archivo Agrupador > Insumos Swaps Internacionales", pagina: 1, filtro: null}
   - {categoria: "Derivados SWAP Internacional", prefijo: "SwapCC_EUROIS_Diaria_", patron: "SwapCC_EUROIS_Diaria_{YYYYMMDD}", area: "Clientes Derivados", seccion: "Descargar Archivo Agrupador > Insumos Swaps Internacionales", pagina: 1, filtro: null}
 
