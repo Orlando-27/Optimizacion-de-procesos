@@ -16,12 +16,14 @@ Ejecutable:  python -m procesos.robot_precia.process [flags]
 from __future__ import annotations
 
 import argparse
+import socket
 from datetime import date, datetime, timedelta
 from pathlib import Path
 from typing import Any
 
 from core.contract import (
     Proceso,
+    ProcesoSkip,
     ProcessContext,
     ProcessResult,
     RunStatus,
@@ -82,6 +84,29 @@ class RobotPrecia(Proceso):
 
         # Plan: (insumo, fecha) por cada combinacion.
         plan = [(ins, f) for f in fechas for ins in insumos]
+
+        # MODO RESPALDO (maquina de las 5 a.m.): antes de abrir el navegador,
+        # revisa la ruta de destino. Si la maquina primaria (4 a.m.) ya bajo TODO,
+        # se salta sin abrir Selenium. Si falta algo, deja en el plan SOLO lo que
+        # falta (la idempotencia igual evita duplicados).
+        if ctx.extra.get("respaldo"):
+            presentes = [(i, f) for (i, f) in plan if self._ya_en_disco(i, f)]
+            faltantes = [(i, f) for (i, f) in plan if (i, f) not in presentes]
+            ctx.logger.info(
+                "respaldo_revision",
+                extra={"total": len(plan), "presentes": len(presentes),
+                       "faltantes": len(faltantes),
+                       "muestra_faltantes": [i.prefijo for i, _ in faltantes[:10]]},
+            )
+            if not faltantes:
+                # Nada que hacer: avisar (breve) y saltar sin tocar el portal.
+                self._reportar(ctx, descargados=[], fallidos=[], fechas=fechas,
+                               modo_respaldo=True)
+                raise ProcesoSkip(
+                    "Respaldo: la maquina primaria ya descargo los "
+                    f"{len(presentes)} insumos. No hay nada que hacer.")
+            plan = faltantes  # solo re-intentar lo que falta
+
         ctx.logger.info(
             "plan_construido",
             extra={"hoy": str(hoy), "fechas": [str(f) for f in fechas],
@@ -89,11 +114,41 @@ class RobotPrecia(Proceso):
         )
         return {"hoy": hoy, "fechas": fechas, "plan": plan}
 
+    def _ya_en_disco(self, insumo: Insumo, fecha: date) -> bool:
+        """True si ya existe en la carpeta un archivo de ese insumo/fecha.
+
+        Mismo criterio que la idempotencia del navegador: un archivo cuenta si su
+        nombre EMPIEZA por el nombre renderizado (prefijo + fecha)."""
+        carpeta = self.cfg.carpeta_destino
+        if not carpeta.exists():
+            return False
+        objetivo = render_nombre(insumo.patron, fecha)
+        for p in carpeta.iterdir():
+            if (p.is_file() and p.name.startswith(objetivo)
+                    and not p.name.endswith((".crdownload", ".tmp", ".part"))):
+                return True
+        return False
+
+    def _reportar(self, ctx: ProcessContext, *, descargados, fallidos, fechas,
+                  error_global: str | None = None, modo_respaldo: bool = False) -> None:
+        """Envia el correo de reporte (descargados + fallidos). Nunca lanza."""
+        try:
+            from core.notifications import reportar_resumen_descargas
+            reportar_resumen_descargas(
+                self.cfg, self.mail, ctx.logger,
+                descargados=descargados, fallidos=fallidos, fechas=fechas,
+                hostname=socket.gethostname(), error_global=error_global,
+                modo_respaldo=modo_respaldo,
+            )
+        except Exception:  # noqa: BLE001 - el reporte no debe romper la corrida
+            ctx.logger.exception("reporte_error")
+
     # ---------------------------------------------------------------- TRANSFORM
     def transform(self, ctx: ProcessContext, data: dict[str, Any]) -> dict[str, Any]:
         plan = data["plan"]
         descargados: list[dict[str, str]] = []
         fallidos: list[dict[str, str]] = []
+        error_global: Exception | None = None
 
         nav = crear_navegador(self.cfg, ctx.logger)
         try:
@@ -109,18 +164,33 @@ class RobotPrecia(Proceso):
                     ruta = nav.descargar(insumo, fecha)
                     descargados.append({"insumo": insumo.prefijo, "fecha": str(fecha),
                                         "archivo": Path(ruta).name})
-                except (NavegadorError, Exception) as e:  # noqa: BLE001
+                except Exception as e:  # noqa: BLE001 - un insumo no debe tumbar los demas
                     ctx.logger.error("insumo_fallido",
                                      extra={"insumo": insumo.prefijo, "fecha": str(fecha),
                                             "categoria": insumo.categoria, "error": str(e)})
                     fallidos.append({"insumo": insumo.prefijo, "fecha": str(fecha),
                                      "categoria": insumo.categoria, "error": str(e)[:200]})
+        except Exception as e:  # noqa: BLE001 - fallo global (login, driver, ...)
+            error_global = e
+            ctx.logger.exception("transform_error_global")
         finally:
             nav.cerrar()
 
         data.update({"descargados": descargados, "fallidos": fallidos})
         ctx.logger.info("descarga_resumen",
-                        extra={"descargados": len(descargados), "fallidos": len(fallidos)})
+                        extra={"descargados": len(descargados), "fallidos": len(fallidos),
+                               "error_global": str(error_global) if error_global else None})
+
+        # Correo de reporte SIEMPRE (exito o fallo), con ambas listas. Se envia
+        # aqui (no en load) para que tambien salga cuando validate marca fallo.
+        if not ctx.dry_run:
+            self._reportar(ctx, descargados=descargados, fallidos=fallidos,
+                           fechas=data["fechas"],
+                           error_global=str(error_global) if error_global else None)
+
+        # Si hubo fallo global (no pudo ni empezar), propagar -> FAILED.
+        if error_global is not None:
+            raise error_global
         return data
 
     # ----------------------------------------------------------------- VALIDATE
@@ -177,6 +247,10 @@ def _parse_args(argv=None) -> argparse.Namespace:
                    help="Forzar 'hoy' (YYYY-MM-DD) para el calculo de fechas")
     p.add_argument("--solo", help="Filtrar insumos por area/categoria/prefijo "
                    "(p.ej. --solo \"Renta Fija\") para probar una seccion aislada")
+    p.add_argument("--respaldo", action="store_true",
+                   help="Modo respaldo (maquina de las 5 a.m.): si la ruta ya "
+                        "tiene todos los insumos, se salta; si falta algo, solo "
+                        "descarga lo que falta.")
     p.add_argument("--config", type=Path, default=RUTA_CONFIG)
     return p.parse_args(argv)
 
@@ -217,10 +291,16 @@ def main(argv=None) -> int:
         extra["fecha_override"] = args.fecha
     if args.solo:
         extra["solo"] = args.solo
+    if args.respaldo:
+        extra["respaldo"] = True
 
+    # notificar_fallo=False: el propio proceso envia UN correo de reporte
+    # (descargados + fallidos) al final del transform, asi que no delegamos la
+    # alerta generica al runner (evita correos duplicados).
     res = ejecutar(
         proceso, cfg, trigger="cli", disparado_por="cli",
         dry_run=args.dry_run, store=RunStore(), extra=extra,
+        notificar_fallo=False,
     )
     print(f"STATUS: {res.status.value} | {res.mensaje}")
     return 0 if res.status in (RunStatus.SUCCESS, RunStatus.SKIPPED) else 1

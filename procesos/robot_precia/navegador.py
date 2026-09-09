@@ -133,28 +133,28 @@ class NavegadorSelenium(NavegadorPrecia):
         if flujo == "consulta":
             return self._descargar_consulta(insumo, fecha, carpeta)
 
-        ctx_nuevo = (insumo.area, insumo.seccion, fecha)
-        # Solo re-navegar si cambio la seccion o la fecha (optimizacion).
-        if ctx_nuevo != self._contexto:
+        import os
+
+        def _abrir() -> None:
+            """(Re)abre la seccion: menu -> iframe -> fecha (inline) -> filtro.
+            Se reutiliza en los reintentos (recarga completa)."""
             self._abrir_seccion(insumo)
             self._portal._seleccionar_fecha(self._driver, self._wait, fecha)
             if insumo.filtro:
                 self._aplicar_filtro(insumo)
-            self._contexto = ctx_nuevo
-            # DIAGNOSTICO opcional (ROBOT_DUMP_FILAS=1): vuelca el nombre real
-            # de cada fila de la tabla para mapear un area nueva (p.ej. Renta
-            # Variable). tabla_id=None -> busca las filas con enlace de descarga.
-            import os
+            # DIAGNOSTICO opcional (ROBOT_DUMP_FILAS=1): vuelca el nombre real de
+            # cada fila para mapear un area nueva. tabla_id=None -> filas con
+            # enlace de descarga.
             if os.environ.get("ROBOT_DUMP_FILAS"):
                 self._volcar_filas_tabla(None)
 
-        antes = self._portal._archivos_en(carpeta)
-        nombre = render_nombre(insumo.patron, fecha)
-        # Busca el insumo recorriendo TODAS las paginas de la tabla (no depende
-        # de un numero de pagina fijo: el archivo puede estar en 1, 2, ...).
-        link = self._buscar_multipagina(nombre, insumo.prefijo)
-        self._click_elemento(link)
-        ruta = self._portal._esperar_descarga(carpeta, insumo.prefijo, antes)
+        ctx_nuevo = (insumo.area, insumo.seccion, fecha)
+        # Solo re-navegar si cambio la seccion o la fecha (optimizacion).
+        if ctx_nuevo != self._contexto:
+            _abrir()
+            self._contexto = ctx_nuevo
+
+        ruta = self._descargar_con_reintento(insumo, fecha, carpeta, _abrir)
         if self.logger:
             self.logger.info("insumo_descargado",
                              extra={"insumo": insumo.prefijo, "fecha": str(fecha),
@@ -204,54 +204,46 @@ class NavegadorSelenium(NavegadorPrecia):
     def _descargar_agrupador(self, insumo: Insumo, fecha: date, carpeta: Path) -> Path:
         """Flujo de Derivados: menu -> grupo -> fecha (popup) -> Buscar -> filtro
         por columna Prefijo (FWD/SWAPCC) -> ubicar por nombre -> descargar."""
+        import os
         from selenium.webdriver.common.by import By
         from selenium.webdriver.support import expected_conditions as EC
 
         cfg = SECCIONES[insumo.area]
         sel = cfg["sel"]
         grupo = cfg["grupos"][insumo.seccion]
-        # Cache por (area, grupo, fecha): solo re-selecciona grupo+fecha+Buscar
-        # cuando cambian. Todos los insumos de un mismo grupo/fecha comparten la
-        # misma tabla, asi que la navegacion pesada se hace una sola vez.
-        ctx_nuevo = (insumo.area, grupo, fecha)
-        if ctx_nuevo != self._contexto:
+
+        def _abrir() -> None:
+            """(Re)abre el grupo: menu #descagrup -> grupo -> fecha popup -> Buscar.
+            Se reutiliza tal cual en los reintentos (recarga completa)."""
             self._abrir_seccion(insumo)  # landing -> #descagrup -> iframe
             self._wait.until(EC.presence_of_element_located((By.ID, sel["agrupador"])))
             self._seleccionar_grupo(sel["agrupador"], grupo)
             self._seleccionar_fecha_popup(sel["fecha"], fecha)
             self._clic(sel["buscar"])
             time.sleep(3)  # cargar la tabla (formDescarga2)
-            self._contexto = ctx_nuevo
-            # Diagnostico: cuantas filas/enlaces de descarga cargaron para este
-            # grupo+fecha. Si es 0, el problema es la seleccion (grupo/fecha) o
-            # que ese dia no se publico nada, NO la busqueda de un insumo puntual.
+            # Diagnostico: cuantas filas/enlaces de descarga cargaron. Si es 0,
+            # el problema es la seleccion (grupo/fecha) o que ese dia no publicaron.
             n = self._contar_descargas_visibles()
             if self.logger:
                 self.logger.info("agrupador_tabla_cargada",
                                  extra={"area": insumo.area, "grupo": grupo,
                                         "fecha": str(fecha), "filas_descargables": n})
             self._portal._screenshot(self._driver, f"agrupador_{grupo.replace(' ', '_')}")
-            # DIAGNOSTICO opcional: con la variable de entorno ROBOT_DUMP_FILAS=1
-            # se vuelca en el log ('agrupador_filas_reales') el prefijo real de
-            # todas las filas del grupo. Util para mapear un area nueva o depurar;
-            # apagado por defecto para no ralentizar la corrida de las 4 a.m.
-            import os
             if os.environ.get("ROBOT_DUMP_FILAS"):
                 self._volcar_filas_tabla(sel.get("tabla"))
-                # El volcado deja el paginador en la ultima pagina;
-                # _buscar_multipagina vuelve a la primera antes de buscar.
 
-        # NOTA: NO se aplica filtro por la columna "Prefijo". La seleccion del
-        # grupo ya acota la tabla a unas pocas decenas de archivos y la busqueda
-        # multipagina localiza cada insumo por su nombre completo (o prefijo).
-        # Un filtro de columna con un valor equivocado (p.ej. 'Matriz_TC_' no
-        # empieza por 'FWD') OCULTARIA la fila objetivo y no se descargaria nada.
+        # Cache por (area, grupo, fecha): solo re-navega cuando cambian. Todos los
+        # insumos de un mismo grupo/fecha comparten la tabla, asi que la
+        # navegacion pesada se hace una sola vez.
+        ctx_nuevo = (insumo.area, grupo, fecha)
+        if ctx_nuevo != self._contexto:
+            _abrir()
+            self._contexto = ctx_nuevo
 
-        antes = self._portal._archivos_en(carpeta)
-        nombre = render_nombre(insumo.patron, fecha)
-        link = self._buscar_multipagina(nombre, insumo.prefijo)
-        self._click_elemento(link)
-        ruta = self._portal._esperar_descarga(carpeta, insumo.prefijo, antes)
+        # NOTA: NO se aplica filtro por la columna "Prefijo": la seleccion del
+        # grupo ya acota la tabla y la busqueda multipagina ubica cada insumo por
+        # nombre/prefijo. Un filtro equivocado ocultaria la fila objetivo.
+        ruta = self._descargar_con_reintento(insumo, fecha, carpeta, _abrir)
         if self.logger:
             self.logger.info("insumo_descargado",
                              extra={"insumo": insumo.prefijo, "fecha": str(fecha),
