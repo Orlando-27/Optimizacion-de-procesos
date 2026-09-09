@@ -122,13 +122,13 @@ class NavegadorSelenium(NavegadorPrecia):
             self._portal._seleccionar_fecha(self._driver, self._wait, fecha)
             if insumo.filtro:
                 self._aplicar_filtro(insumo)
-            if insumo.pagina and insumo.pagina > 1:
-                self._ir_a_pagina(insumo.pagina)
             self._contexto = ctx_nuevo
 
         antes = self._portal._archivos_en(carpeta)
         nombre = render_nombre(insumo.patron, fecha)
-        link = self._buscar_fila_descarga(nombre, insumo.prefijo)
+        # Busca el insumo recorriendo TODAS las paginas de la tabla (no depende
+        # de un numero de pagina fijo: el archivo puede estar en 1, 2, ...).
+        link = self._buscar_multipagina(nombre, insumo.prefijo)
         link.click()
         ruta = self._portal._esperar_descarga(carpeta, insumo.prefijo, antes)
         if self.logger:
@@ -182,7 +182,47 @@ class NavegadorSelenium(NavegadorPrecia):
         except Exception as e:  # noqa: BLE001
             raise NavegadorError(f"No se pudo ir a la pagina {pagina}: {e}") from e
 
-    def _buscar_fila_descarga(self, nombre: str, prefijo: str):
+    def _buscar_multipagina(self, nombre: str, prefijo: str):
+        """Busca el insumo en la pagina actual y, si no esta, avanza por el
+        paginador de PrimeFaces hasta encontrarlo o agotar las paginas."""
+        self._ir_primera_pagina()
+        intentos = 0
+        while True:
+            try:
+                return self._buscar_fila_descarga(nombre, prefijo, timeout=6)
+            except NavegadorError:
+                intentos += 1
+                if intentos > 20 or not self._siguiente_pagina():
+                    self._portal._screenshot(self._driver, f"fila_no_encontrada_{prefijo}")
+                    raise NavegadorError(
+                        f"No se encontro '{nombre}' (prefijo '{prefijo}') en ninguna "
+                        "pagina de la tabla (¿publicado ese dia? ¿nombre correcto?)."
+                    )
+
+    def _ir_primera_pagina(self) -> None:
+        from selenium.webdriver.common.by import By
+        try:
+            btn = self._driver.find_element(By.CSS_SELECTOR, ".ui-paginator-first")
+            if "ui-state-disabled" not in (btn.get_attribute("class") or ""):
+                btn.click()
+                time.sleep(1.5)
+        except Exception:  # noqa: BLE001 - sin paginador (una sola pagina): seguir
+            pass
+
+    def _siguiente_pagina(self) -> bool:
+        """Va a la pagina siguiente. Devuelve False si no hay mas paginas."""
+        from selenium.webdriver.common.by import By
+        try:
+            btn = self._driver.find_element(By.CSS_SELECTOR, ".ui-paginator-next")
+            if "ui-state-disabled" in (btn.get_attribute("class") or ""):
+                return False
+            btn.click()
+            time.sleep(1.5)
+            return True
+        except Exception:  # noqa: BLE001
+            return False
+
+    def _buscar_fila_descarga(self, nombre: str, prefijo: str, timeout: int = 20):
         """Ubica el enlace de descarga de la fila del insumo.
 
         Estrategia (de mas a menos preciso), con timeout CORTO para no colgarse:
@@ -196,8 +236,8 @@ class NavegadorSelenium(NavegadorPrecia):
         from selenium.webdriver.support import expected_conditions as EC
         from selenium.webdriver.support.ui import WebDriverWait
 
-        # timeout corto: si no esta en esta pagina, falla rapido y sigue.
-        wait_corto = WebDriverWait(self._driver, 20)
+        # timeout corto: si no esta en esta pagina, falla rapido y prueba la siguiente.
+        wait_corto = WebDriverWait(self._driver, timeout)
         candidatos = [
             f"//tr[contains(@data-rk, '{nombre}')]//a[.//img[contains(@src,'descargar')]]",
             f"//tr[.//*[contains(normalize-space(.), '{nombre}')]]"
@@ -211,11 +251,7 @@ class NavegadorSelenium(NavegadorPrecia):
                 return wait_corto.until(EC.element_to_be_clickable((By.XPATH, xp)))
             except Exception:  # noqa: BLE001
                 continue
-        self._portal._screenshot(self._driver, f"fila_no_encontrada_{prefijo}")
-        raise NavegadorError(
-            f"No se encontro la fila del insumo '{nombre}' (prefijo '{prefijo}') "
-            "en la pagina actual (¿publicado? ¿pagina correcta?)."
-        )
+        raise NavegadorError(f"'{nombre}' no esta en la pagina actual.")
 
     # ------------------------------------------------------------------ cerrar
     def cerrar(self) -> None:
