@@ -47,27 +47,33 @@ SECCIONES: dict[str, dict] = {
     "Clientes Derivados": {
         "landing_url": "https://www.precia.co/index.php/derivados/",  # CONFIRMADO
         "iframe": "BranderFrame",
-        # CONFIRMADO: el boton del menu es #descagrup (carga
-        # descargaArchivosAgrupador.xhtml). Las 4 sub-secciones pasan por el mismo
-        # boton; DENTRO del agrupador se elige el "grupo" (Insumos Locales / Swaps
-        # Internacionales / Forward Internacionales / Otros) -> ese selector y el
-        # del filtro estan PENDIENTES de capturar (dump de esa pagina).
-        "botones": {
+        # CONFIRMADO: flujo "agrupador". Boton de menu #descagrup carga
+        # descargaArchivosAgrupador.xhtml; ahi se elige el grupo (dropdown),
+        # la fecha (popup), se pulsa Buscar y se filtra la tabla por la columna
+        # Prefijo (FWD/SWAPCC).
+        "flujo": "agrupador",
+        "boton_menu": "#descagrup",
+        "botones": {  # todas las sub-secciones entran por el mismo boton
             "Descargar Archivo Agrupador > Insumos Locales": "#descagrup",
             "Descargar Archivo Agrupador > Insumos Swaps Internacionales": "#descagrup",
             "Descargar Archivo Agrupador > Insumos Forward Internacionales": "#descagrup",
             "Descargar Archivo Agrupador > Otros Insumos": "#descagrup",
         },
-        # PENDIENTE: selector del "grupo" (dropdown) y del filtro de texto (FWD/SWAPCC).
+        # seccion -> etiqueta del grupo en el dropdown (espacios normalizados).
         "grupos": {
-            "Descargar Archivo Agrupador > Insumos Locales": TODO,
-            "Descargar Archivo Agrupador > Insumos Swaps Internacionales": TODO,
-            "Descargar Archivo Agrupador > Insumos Forward Internacionales": TODO,
-            "Descargar Archivo Agrupador > Otros Insumos": TODO,
+            "Descargar Archivo Agrupador > Insumos Locales": "Insumos Locales",
+            "Descargar Archivo Agrupador > Insumos Swaps Internacionales": "Insumos Swaps Internacionales",
+            "Descargar Archivo Agrupador > Insumos Forward Internacionales": "Insumos Forward Internacionales",
+            "Descargar Archivo Agrupador > Otros Insumos": "Otros Insumos",
         },
-        "filtros": {
-            "Descargar Archivo Agrupador > Insumos Locales": TODO,
-            "Descargar Archivo Agrupador > Insumos Forward Internacionales": TODO,
+        # El filtro FWD/SWAPCC va en la columna "Prefijo" de la tabla.
+        "filtro_columna": "Prefijo",
+        # Selectores JSF (By.ID, sin escapar):
+        "sel": {
+            "agrupador": "formDescarga1:autAgrupador",   # dropdown de grupo
+            "fecha": "formDescarga1:popupFecha",         # span calendar (popup)
+            "buscar": "formDescarga1:btnBuscar",
+            "tabla": "formDescarga2:dtDescargaArchivos",
         },
     },
     "Clientes Productos Estructurados": {

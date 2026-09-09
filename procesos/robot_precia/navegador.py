@@ -125,6 +125,10 @@ class NavegadorSelenium(NavegadorPrecia):
                                         "archivo": ya.name})
             return ya
 
+        # Enrutar segun el flujo del area: "agrupador" (Derivados) o "directo" (RF).
+        if SECCIONES[insumo.area].get("flujo") == "agrupador":
+            return self._descargar_agrupador(insumo, fecha, carpeta)
+
         ctx_nuevo = (insumo.area, insumo.seccion, fecha)
         # Solo re-navegar si cambio la seccion o la fecha (optimizacion).
         if ctx_nuevo != self._contexto:
@@ -146,6 +150,88 @@ class NavegadorSelenium(NavegadorPrecia):
                              extra={"insumo": insumo.prefijo, "fecha": str(fecha),
                                     "archivo": Path(ruta).name})
         return ruta
+
+    # -------------------------------------------------- flujo AGRUPADOR (Derivados)
+    def _descargar_agrupador(self, insumo: Insumo, fecha: date, carpeta: Path) -> Path:
+        """Flujo de Derivados: menu -> grupo -> fecha (popup) -> Buscar -> filtro
+        por columna Prefijo (FWD/SWAPCC) -> ubicar por nombre -> descargar."""
+        from selenium.webdriver.common.by import By
+        from selenium.webdriver.support import expected_conditions as EC
+
+        cfg = SECCIONES[insumo.area]
+        sel = cfg["sel"]
+        grupo = cfg["grupos"][insumo.seccion]
+        # Cache por (area, grupo, fecha): solo re-selecciona grupo+fecha+Buscar
+        # cuando cambian; el filtro por columna se re-aplica por insumo.
+        ctx_nuevo = (insumo.area, grupo, fecha)
+        if ctx_nuevo != self._contexto:
+            self._abrir_seccion(insumo)  # landing -> #descagrup -> iframe
+            self._wait.until(EC.presence_of_element_located((By.ID, sel["agrupador"])))
+            self._seleccionar_grupo(sel["agrupador"], grupo)
+            self._seleccionar_fecha_popup(sel["fecha"], fecha)
+            self._clic(sel["buscar"])
+            time.sleep(3)  # cargar la tabla (formDescarga2)
+            self._contexto = ctx_nuevo
+
+        # Filtro por columna (FWD/SWAPCC). Se limpia y re-aplica por insumo.
+        self._filtrar_columna(cfg.get("filtro_columna"), insumo.filtro)
+
+        antes = self._portal._archivos_en(carpeta)
+        nombre = render_nombre(insumo.patron, fecha)
+        link = self._buscar_multipagina(nombre, insumo.prefijo)
+        link.click()
+        ruta = self._portal._esperar_descarga(carpeta, insumo.prefijo, antes)
+        if self.logger:
+            self.logger.info("insumo_descargado",
+                             extra={"insumo": insumo.prefijo, "fecha": str(fecha),
+                                    "archivo": Path(ruta).name})
+        return ruta
+
+    def _seleccionar_grupo(self, dropdown_id: str, etiqueta: str) -> None:
+        """Selecciona una opcion en un PrimeFaces SelectOneMenu por su etiqueta."""
+        from selenium.webdriver.common.by import By
+        from selenium.webdriver.support import expected_conditions as EC
+
+        self._wait.until(EC.element_to_be_clickable((By.ID, dropdown_id))).click()
+        # El panel de items es <ul id="<dropdown>_items">; se matchea por data-label
+        # normalizando espacios (algunas etiquetas traen doble espacio).
+        xp = (f"//ul[@id='{dropdown_id}_items']"
+              f"/li[normalize-space(@data-label)='{etiqueta}']")
+        self._wait.until(EC.element_to_be_clickable((By.XPATH, xp))).click()
+        time.sleep(1)
+
+    def _seleccionar_fecha_popup(self, fecha_span_id: str, fecha: date) -> None:
+        """Abre el datepicker popup (boton dentro del span) y selecciona el dia."""
+        from selenium.webdriver.common.by import By
+
+        # El span contiene el input y el boton-trigger del calendario.
+        span = self._driver.find_element(By.ID, fecha_span_id)
+        span.find_element(By.CSS_SELECTOR, ".ui-datepicker-trigger").click()
+        time.sleep(1)
+        # Con el popup abierto (#ui-datepicker-div) reutilizamos el clic de dia.
+        self._portal._seleccionar_fecha(self._driver, self._wait, fecha)
+
+    def _filtrar_columna(self, titulo_columna: str, texto: str) -> None:
+        """Escribe (o limpia) el filtro de la columna cuyo titulo es titulo_columna."""
+        from selenium.webdriver.common.by import By
+
+        if not titulo_columna:
+            return
+        xp = (f"//th[.//span[@class='ui-column-title' and "
+              f"normalize-space(.)='{titulo_columna}']]//input[contains(@class,'ui-column-filter')]")
+        try:
+            campo = self._driver.find_element(By.XPATH, xp)
+        except Exception:  # noqa: BLE001
+            return  # esta seccion no tiene filtro de columna
+        campo.clear()
+        if texto:
+            campo.send_keys(texto)
+        time.sleep(2)  # dar tiempo al filtrado ajax
+
+    def _clic(self, elem_id: str) -> None:
+        from selenium.webdriver.common.by import By
+        from selenium.webdriver.support import expected_conditions as EC
+        self._wait.until(EC.element_to_be_clickable((By.ID, elem_id))).click()
 
     def _ya_descargado(self, insumo: Insumo, fecha: date, carpeta: Path):
         """Devuelve la ruta si el insumo ya esta descargado para esa fecha.
