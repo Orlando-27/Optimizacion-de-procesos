@@ -264,8 +264,8 @@ class NavegadorSelenium(NavegadorPrecia):
             self._driver.execute_script("arguments[0].click();", el)
 
     def _descargar_con_reintento(self, insumo: Insumo, fecha: date, carpeta: Path,
-                                 reabrir, intentos: int = 3,
-                                 timeout_intento: float = 60.0) -> Path:
+                                 reabrir, intentos: int | None = None,
+                                 timeout_intento: float | None = None) -> Path:
         """Ubica la fila, clica descargar y espera; si no baja en el intento,
         REABRE la seccion (recarga + reelige fecha) y reintenta.
 
@@ -274,6 +274,14 @@ class NavegadorSelenium(NavegadorPrecia):
         tras recargar la pagina y volver a pedir la fecha. Cada intento usa un
         timeout corto para no esperar de mas antes de reintentar.
         """
+        # Tiempos configurables (config.yaml -> portal.*), con respaldo por si
+        # una config vieja no los trae.
+        port = self.cfg.portal
+        if intentos is None:
+            intentos = getattr(port, "reintentos_descarga", 3)
+        if timeout_intento is None:
+            timeout_intento = getattr(port, "timeout_descarga_seg", 90)
+
         nombre = render_nombre(insumo.patron, fecha)
         ultimo = None
         for intento in range(1, intentos + 1):
@@ -510,13 +518,14 @@ class NavegadorSelenium(NavegadorPrecia):
         """Busca el insumo en la pagina actual y, si no esta, avanza por el
         paginador de PrimeFaces hasta encontrarlo o agotar las paginas."""
         import os
+        t_busqueda = getattr(self.cfg.portal, "timeout_busqueda_seg", 10)
         self._ir_primera_pagina()
         intentos = 0
         while True:
             try:
                 # esperar a que no haya overlay/carga antes de buscar en la pagina
                 self._esperar_sin_overlay()
-                link = self._buscar_fila_descarga(nombre, prefijo, timeout=10)
+                link = self._buscar_fila_descarga(nombre, prefijo, timeout=t_busqueda)
                 # DIAGNOSTICO opcional: registrar el enlace de descarga que se
                 # encontro (HTML + texto de su fila) para depurar descargas que
                 # no generan archivo (p.ej. un enlace con estructura distinta).

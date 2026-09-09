@@ -26,8 +26,12 @@ class RutasRobotCfg(BaseModel):
 class PortalCfg(BaseModel):
     url_login: str = "https://www.precia.co/wp-login.php"
     headless: bool = False          # las apps JSF suelen fallar headless
-    timeout_seg: int = 120
+    timeout_seg: int = 180          # espera general (login, cargar seccion, etc.)
     tam_minimo_bytes: int = 1
+    # Tiempos ampliables para equipos/redes lentos:
+    timeout_descarga_seg: int = 120  # cuanto esperar por-intento a que baje el archivo
+    timeout_busqueda_seg: int = 15   # cuanto esperar por-pagina para ubicar la fila
+    reintentos_descarga: int = 3     # reintentos (recargando la seccion) por insumo
 
 
 class FechaCfg(BaseModel):

@@ -16,8 +16,12 @@ rutas:
 portal:
   url_login: "https://www.precia.co/wp-login.php"
   headless: false            # las apps JSF de Precia fallan headless -> con ventana
-  timeout_seg: 120
+  timeout_seg: 180           # espera general (login, cargar seccion). Subir si el PC es lento.
   tam_minimo_bytes: 1
+  # Tiempos ampliables para equipos/redes lentos (subelos si siguen fallando por tiempo):
+  timeout_descarga_seg: 120  # espera por-intento a que termine de bajar cada archivo
+  timeout_busqueda_seg: 15   # espera por-pagina para ubicar la fila del insumo
+  reintentos_descarga: 3     # reintentos por insumo (recargando la seccion)
 
 fecha:
   dias_retroceso_max: 7               # cuantos dias atras buscar si t-1 no esta
