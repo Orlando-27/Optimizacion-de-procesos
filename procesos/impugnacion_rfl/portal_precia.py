@@ -317,8 +317,9 @@ class PortalPreciaSelenium(PortalRFL):
                 self.logger.info("portal_descarga_en_progreso", extra={"objetivo": objetivo})
             time.sleep(1)
         raise PortalError(
-            f"Timeout esperando que termine la descarga de {objetivo}*.001 "
-            f"(¿conexion lenta? subir portal.timeout_seg)."
+            f"Timeout esperando que termine la descarga de '{objetivo}*' "
+            f"(¿conexion lenta, o el archivo ya existia y no se genero uno nuevo? "
+            f"subir portal.timeout_seg)."
         )
 
     @staticmethod
