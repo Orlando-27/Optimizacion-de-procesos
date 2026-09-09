@@ -212,6 +212,7 @@ class NavegadorSelenium(NavegadorPrecia):
         from selenium.webdriver.common.by import By
         from selenium.webdriver.support import expected_conditions as EC
 
+        self._esperar_sin_overlay()
         self._wait.until(EC.element_to_be_clickable((By.ID, dropdown_id))).click()
         time.sleep(0.5)
         # Si el SelectOneMenu tiene caja de filtro, escribir para acotar.
@@ -225,7 +226,12 @@ class NavegadorSelenium(NavegadorPrecia):
         # El panel de items es <ul id="<dropdown>_items">.
         xp = (f"//ul[@id='{dropdown_id}_items']"
               f"/li[normalize-space(@data-label)='{etiqueta}']")
-        self._wait.until(EC.element_to_be_clickable((By.XPATH, xp))).click()
+        li = self._wait.until(EC.presence_of_element_located((By.XPATH, xp)))
+        self._driver.execute_script("arguments[0].scrollIntoView({block:'center'});", li)
+        try:
+            li.click()
+        except Exception:  # noqa: BLE001
+            self._driver.execute_script("arguments[0].click();", li)
         time.sleep(1)
 
     def _contar_descargas_visibles(self) -> int:
@@ -238,15 +244,45 @@ class NavegadorSelenium(NavegadorPrecia):
             return -1
 
     def _seleccionar_fecha_popup(self, fecha_span_id: str, fecha: date) -> None:
-        """Abre el datepicker popup (boton dentro del span) y selecciona el dia."""
+        """Abre el datepicker popup (boton dentro del span) y selecciona el dia.
+
+        La seleccion del grupo dispara un ajax de PrimeFaces que puede dejar por
+        un instante una mascara de bloqueo (.ui-blockui) o el panel del
+        desplegable sobre el boton del calendario -> un click normal daria
+        'element click intercepted'. Por eso: (1) se espera a que desaparezca
+        cualquier overlay, y (2) se pulsa el trigger por JavaScript, que no
+        depende de que el elemento este 'despejado' en pantalla.
+        """
         from selenium.webdriver.common.by import By
 
-        # El span contiene el input y el boton-trigger del calendario.
+        self._esperar_sin_overlay()
         span = self._driver.find_element(By.ID, fecha_span_id)
-        span.find_element(By.CSS_SELECTOR, ".ui-datepicker-trigger").click()
+        trigger = span.find_element(By.CSS_SELECTOR, ".ui-datepicker-trigger")
+        self._driver.execute_script(
+            "arguments[0].scrollIntoView({block:'center'});", trigger)
+        self._driver.execute_script("arguments[0].click();", trigger)
         time.sleep(1)
         # Con el popup abierto (#ui-datepicker-div) reutilizamos el clic de dia.
         self._portal._seleccionar_fecha(self._driver, self._wait, fecha)
+
+    def _esperar_sin_overlay(self, timeout: float = 8.0) -> None:
+        """Espera a que no haya mascaras de bloqueo/paneles de PrimeFaces visibles.
+
+        Cubre la mascara de ajax (.ui-blockui) y el overlay generico
+        (.ui-widget-overlay) que aparecen mientras el portal procesa una
+        peticion; si no hay ninguno, retorna de inmediato.
+        """
+        overlays = ".ui-blockui, .ui-widget-overlay, .ui-selectonemenu-panel:not([style*='display: none'])"
+        fin = time.time() + timeout
+        while time.time() < fin:
+            visibles = self._driver.execute_script(
+                "return Array.from(document.querySelectorAll(arguments[0]))"
+                ".some(e => e.offsetParent !== null && e.offsetHeight > 0);",
+                overlays,
+            )
+            if not visibles:
+                return
+            time.sleep(0.3)
 
     def _filtrar_columna(self, titulo_columna: str, texto: str) -> None:
         """Escribe (o limpia) el filtro de la columna cuyo titulo es titulo_columna."""
@@ -266,9 +302,17 @@ class NavegadorSelenium(NavegadorPrecia):
         time.sleep(2)  # dar tiempo al filtrado ajax
 
     def _clic(self, elem_id: str) -> None:
+        """Clic robusto por ID: espera a que no haya overlay y, si el click
+        normal es interceptado, reintenta por JavaScript."""
         from selenium.webdriver.common.by import By
         from selenium.webdriver.support import expected_conditions as EC
-        self._wait.until(EC.element_to_be_clickable((By.ID, elem_id))).click()
+        self._esperar_sin_overlay()
+        el = self._wait.until(EC.presence_of_element_located((By.ID, elem_id)))
+        self._driver.execute_script("arguments[0].scrollIntoView({block:'center'});", el)
+        try:
+            el.click()
+        except Exception:  # noqa: BLE001 - 'click intercepted' u overlay tardio
+            self._driver.execute_script("arguments[0].click();", el)
 
     def _ya_descargado(self, insumo: Insumo, fecha: date, carpeta: Path):
         """Devuelve la ruta si el insumo ya esta descargado para esa fecha.
