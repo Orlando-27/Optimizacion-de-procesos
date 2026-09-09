@@ -153,7 +153,7 @@ class NavegadorSelenium(NavegadorPrecia):
         # Busca el insumo recorriendo TODAS las paginas de la tabla (no depende
         # de un numero de pagina fijo: el archivo puede estar en 1, 2, ...).
         link = self._buscar_multipagina(nombre, insumo.prefijo)
-        link.click()
+        self._click_elemento(link)
         ruta = self._portal._esperar_descarga(carpeta, insumo.prefijo, antes)
         if self.logger:
             self.logger.info("insumo_descargado",
@@ -185,7 +185,7 @@ class NavegadorSelenium(NavegadorPrecia):
         antes = self._portal._archivos_en(carpeta)
         nombre = render_nombre(insumo.patron, fecha)
         link = self._buscar_multipagina(nombre, insumo.prefijo)
-        link.click()
+        self._click_elemento(link)
         ruta = self._portal._esperar_descarga(carpeta, insumo.prefijo, antes)
         if self.logger:
             self.logger.info("insumo_descargado",
@@ -243,13 +243,26 @@ class NavegadorSelenium(NavegadorPrecia):
         antes = self._portal._archivos_en(carpeta)
         nombre = render_nombre(insumo.patron, fecha)
         link = self._buscar_multipagina(nombre, insumo.prefijo)
-        link.click()
+        self._click_elemento(link)
         ruta = self._portal._esperar_descarga(carpeta, insumo.prefijo, antes)
         if self.logger:
             self.logger.info("insumo_descargado",
                              extra={"insumo": insumo.prefijo, "fecha": str(fecha),
                                     "archivo": Path(ruta).name})
         return ruta
+
+    def _click_elemento(self, el) -> None:
+        """Clic robusto: hace scroll al elemento y, si el clic nativo no procede
+        (interceptado o no registra), reintenta por JavaScript. Se usa para el
+        enlace de descarga de cada fila."""
+        try:
+            self._driver.execute_script("arguments[0].scrollIntoView({block:'center'});", el)
+        except Exception:  # noqa: BLE001
+            pass
+        try:
+            el.click()
+        except Exception:  # noqa: BLE001
+            self._driver.execute_script("arguments[0].click();", el)
 
     def _volcar_filas_tabla(self, tabla_id: str | None) -> None:
         """Registra en el log el texto real de TODAS las filas de la tabla,
@@ -465,11 +478,27 @@ class NavegadorSelenium(NavegadorPrecia):
     def _buscar_multipagina(self, nombre: str, prefijo: str):
         """Busca el insumo en la pagina actual y, si no esta, avanza por el
         paginador de PrimeFaces hasta encontrarlo o agotar las paginas."""
+        import os
         self._ir_primera_pagina()
         intentos = 0
         while True:
             try:
-                return self._buscar_fila_descarga(nombre, prefijo, timeout=6)
+                link = self._buscar_fila_descarga(nombre, prefijo, timeout=6)
+                # DIAGNOSTICO opcional: registrar el enlace de descarga que se
+                # encontro (HTML + texto de su fila) para depurar descargas que
+                # no generan archivo (p.ej. un enlace con estructura distinta).
+                if os.environ.get("ROBOT_DUMP_FILAS") and self.logger:
+                    from selenium.webdriver.common.by import By
+                    try:
+                        fila = link.find_element(By.XPATH, "./ancestor::tr[1]")
+                        self.logger.warning("descarga_elemento", extra={
+                            "prefijo": prefijo,
+                            "fila": " ".join(fila.text.split())[:120],
+                            "href": link.get_attribute("href"),
+                            "html": (link.get_attribute("outerHTML") or "")[:400]})
+                    except Exception:  # noqa: BLE001
+                        pass
+                return link
             except NavegadorError:
                 intentos += 1
                 if intentos > 20 or not self._siguiente_pagina():
