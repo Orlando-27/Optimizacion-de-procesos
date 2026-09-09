@@ -150,13 +150,28 @@ class PortalPreciaSelenium(PortalRFL):
         driver.find_element(By.CSS_SELECTOR, SEL_LOGIN_USUARIO).send_keys(usuario)
         driver.find_element(By.CSS_SELECTOR, SEL_LOGIN_CLAVE).send_keys(clave)
         driver.find_element(By.CSS_SELECTOR, SEL_LOGIN_BOTON).click()
+
+        # ESPERAR el resultado antes de decidir (clave en redes/PCs lentos): o la
+        # pagina redirige fuera de wp-login (exito), o aparece #login_error
+        # (credenciales invalidas). Sin esta espera, un login correcto que aun
+        # esta redirigiendo se leia por error como "no redirigio".
+        try:
+            wait.until(lambda d: ("wp-login" not in d.current_url)
+                       or bool(d.find_elements(By.CSS_SELECTOR, SEL_LOGIN_ERROR)))
+        except Exception:  # noqa: BLE001 - timeout: se evalua el estado abajo
+            pass
+
         # Credenciales invalidas -> WordPress muestra #login_error y sigue en wp-login.
         if driver.find_elements(By.CSS_SELECTOR, SEL_LOGIN_ERROR):
             self._screenshot(driver, "login_fallido")
-            raise PortalError("Login rechazado: credenciales invalidas.")
+            raise PortalError("Login rechazado: credenciales invalidas "
+                              "(revisa PRECIA_USUARIO/PRECIA_CLAVE en el .env).")
         if "wp-login" in driver.current_url:
             self._screenshot(driver, "login_sin_redireccion")
-            raise PortalError("Login no redirigio (¿credenciales o captcha?).")
+            raise PortalError(
+                "Login no redirigio tras esperar. Posibles causas: credenciales "
+                "del portal incorrectas o vacias en el .env, o un captcha/segundo "
+                "factor en la pagina. Revisa el screenshot logs/login_sin_redireccion_*.png.")
         if self.logger:
             self.logger.info("portal_login_ok", extra={"url": driver.current_url})
 
