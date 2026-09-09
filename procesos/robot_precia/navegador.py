@@ -115,6 +115,16 @@ class NavegadorSelenium(NavegadorPrecia):
         from selenium.webdriver.common.by import By
 
         carpeta = self.cfg.carpeta_destino
+        # Idempotencia: si el insumo ya esta descargado para esa fecha, no lo
+        # vuelve a bajar (evita duplicados y re-descargas al re-ejecutar).
+        ya = self._ya_descargado(insumo, fecha, carpeta)
+        if ya is not None:
+            if self.logger:
+                self.logger.info("insumo_ya_existe",
+                                 extra={"insumo": insumo.prefijo, "fecha": str(fecha),
+                                        "archivo": ya.name})
+            return ya
+
         ctx_nuevo = (insumo.area, insumo.seccion, fecha)
         # Solo re-navegar si cambio la seccion o la fecha (optimizacion).
         if ctx_nuevo != self._contexto:
@@ -136,6 +146,24 @@ class NavegadorSelenium(NavegadorPrecia):
                              extra={"insumo": insumo.prefijo, "fecha": str(fecha),
                                     "archivo": Path(ruta).name})
         return ruta
+
+    def _ya_descargado(self, insumo: Insumo, fecha: date, carpeta: Path):
+        """Devuelve la ruta si el insumo ya esta descargado para esa fecha.
+
+        Compara por el nombre renderizado (con la fecha): un archivo cuenta como
+        ya descargado si su nombre EMPIEZA por el nombre esperado. Esto sirve
+        tanto para nombres con extension conocida (MX090826.txt) como para los
+        que solo conocemos el prefijo+fecha (SB090826 -> SB090826.001).
+        """
+        nombre = render_nombre(insumo.patron, fecha)
+        carpeta = Path(carpeta)
+        if not carpeta.exists():
+            return None
+        for p in carpeta.iterdir():
+            if (p.is_file() and p.name.startswith(nombre)
+                    and not p.name.endswith((".crdownload", ".tmp", ".part"))):
+                return p
+        return None
 
     # ------------------------------------------------------------ navegacion
     def _abrir_seccion(self, insumo: Insumo) -> None:
