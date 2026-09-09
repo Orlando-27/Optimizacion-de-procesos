@@ -36,7 +36,7 @@ SECCIONES: dict[str, dict] = {
 
     # ---- PENDIENTES DE MAPEAR (capturar landing_url + selectores) ----
     "Clientes Renta Variable": {
-        "landing_url": TODO,   # p.ej. https://www.precia.co/index.php/renta-variable/
+        "landing_url": "https://www.precia.co/index.php/renta-variable/",  # CONFIRMADO
         "iframe": "BranderFrame",
         "botones": {
             "Archivos De Valoración": TODO,
@@ -45,7 +45,7 @@ SECCIONES: dict[str, dict] = {
         "filtros": {},
     },
     "Clientes Derivados": {
-        "landing_url": TODO,   # p.ej. https://www.precia.co/index.php/derivados/
+        "landing_url": "https://www.precia.co/index.php/derivados/",  # CONFIRMADO
         "iframe": "BranderFrame",
         "botones": {
             # La ruta real es "Descargar Archivo Agrupador" y dentro se elige el
@@ -62,7 +62,7 @@ SECCIONES: dict[str, dict] = {
         },
     },
     "Clientes Productos Estructurados": {
-        "landing_url": TODO,
+        "landing_url": "https://www.precia.co/index.php/productos-estructurados/",  # CONFIRMADO
         "iframe": "BranderFrame",
         "botones": {
             "Consulta de productos": TODO,
