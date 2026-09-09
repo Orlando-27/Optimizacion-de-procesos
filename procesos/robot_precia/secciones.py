@@ -38,11 +38,15 @@ SECCIONES: dict[str, dict] = {
     "Clientes Renta Variable": {
         "landing_url": "https://www.precia.co/index.php/renta-variable/",  # CONFIRMADO
         "iframe": "BranderFrame",
+        # CONFIRMADO (volcado del portal): flujo "directo" como Renta Fija
+        # (calendario inline + tabla reflow con columnas Archivo/Descargar).
+        #   #arcval    -> archivosValoracionLocal.xhtml
+        #   #arcvalin  -> archivosValoracionInt.xhtml
         "botones": {
-            "Archivos De Valoración": TODO,
-            "Archivos De Valoración Internacional": TODO,
+            "Archivos De Valoración": "#arcval",
+            "Archivos De Valoración Internacional": "#arcvalin",
         },
-        "filtros": {},
+        "filtros": {},  # estas secciones no llevan filtro de texto
     },
     "Clientes Derivados": {
         "landing_url": "https://www.precia.co/index.php/derivados/",  # CONFIRMADO

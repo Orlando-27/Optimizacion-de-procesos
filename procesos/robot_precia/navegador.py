@@ -137,6 +137,12 @@ class NavegadorSelenium(NavegadorPrecia):
             if insumo.filtro:
                 self._aplicar_filtro(insumo)
             self._contexto = ctx_nuevo
+            # DIAGNOSTICO opcional (ROBOT_DUMP_FILAS=1): vuelca el nombre real
+            # de cada fila de la tabla para mapear un area nueva (p.ej. Renta
+            # Variable). tabla_id=None -> busca las filas con enlace de descarga.
+            import os
+            if os.environ.get("ROBOT_DUMP_FILAS"):
+                self._volcar_filas_tabla(None)
 
         antes = self._portal._archivos_en(carpeta)
         nombre = render_nombre(insumo.patron, fecha)
