@@ -1,0 +1,36 @@
+# =====================================================================
+#  EJEMPLO YA DILIGENCIADO PARA PRODUCCIÓN
+# ---------------------------------------------------------------------
+#  Cuando estés en la oficina y quieras dejar el robot en PRODUCCIÓN:
+#    1. Copia este archivo sobre el real:   parametros.ejemplo.yaml -> parametros.yaml
+#       (o abre parametros.yaml y pega este contenido).
+#    2. Reemplaza la RUTA de red (carpeta_destino.prod) por la real.
+#    3. Ajusta la lista de receptores si deben recibir más personas.
+#    4. Guarda y ejecuta.  ¡Listo!
+# =====================================================================
+
+# En producción va en "prod" (ruta de red real + envía el correo por Outlook).
+entorno: "prod"
+
+# --- Carpeta donde se guardan los insumos --------------------------------
+carpeta_destino:
+  test: "./sandbox/robot_precia"
+  # 👇 REEMPLAZA por la ruta de red real (UNC \\servidor\...); LA MISMA en las
+  #    dos máquinas (primaria y respaldo). Recuerda: cada "\" se escribe doble.
+  prod: "\\\\SERVIDOR\\COB\\Gerencia Estrategia\\Analisis Cuantitativo\\BDatos\\INSUMOS_PRECIA"
+
+# --- Quién ENVÍA el correo (buzón de Outlook en las máquinas) ------------
+remitente: "jbobadilla@colfondos.com.co"
+
+# --- Quiénes RECIBEN el correo (reporte diario + alertas) ----------------
+receptores:
+  test:
+    - "jbobadilla@colfondos.com.co"
+  prod:
+    - "jbobadilla@colfondos.com.co"
+    # - "otra.persona@colfondos.com.co"   # agrega más con "  - " si hace falta
+
+# --- Copia (CC), opcional ------------------------------------------------
+copia_cc:
+  test: []
+  prod: []
