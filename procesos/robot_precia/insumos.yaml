@@ -29,7 +29,7 @@ insumos:
   - {categoria: "Renta Fija Local", prefijo: "SM", patron: "SM{MMDDYY}",  area: "Clientes Renta Fija Local", seccion: "Archivos Renta Fija Local", pagina: 1, filtro: null}
   - {categoria: "Renta Fija Local", prefijo: "SN", patron: "SN{MMDDYY}",  area: "Clientes Renta Fija Local", seccion: "Archivos Renta Fija Local", pagina: 1, filtro: null}
   - {categoria: "Renta Fija Local", prefijo: "SP", patron: "SP{MMDDYY}",  area: "Clientes Renta Fija Local", seccion: "Archivos Renta Fija Local", pagina: 1, filtro: null}
-  - {categoria: "Renta Fija Local", prefijo: "SR", patron: "SR{MMDDYY}",  area: "Clientes Renta Fija Local", seccion: "Archivos Renta Fija Local", pagina: 1, filtro: null}
+  - {categoria: "Renta Fija Local", prefijo: "ST", patron: "ST{MMDDYY}",  area: "Clientes Renta Fija Local", seccion: "Archivos Renta Fija Local", pagina: 1, filtro: null}
   - {categoria: "Renta Fija Local", prefijo: "SU", patron: "SU{MMDDYY}",  area: "Clientes Renta Fija Local", seccion: "Archivos Renta Fija Local", pagina: 1, filtro: null}
   - {categoria: "Renta Fija Local", prefijo: "SV", patron: "SV{MMDDYY}",  area: "Clientes Renta Fija Local", seccion: "Archivos Renta Fija Local", pagina: 1, filtro: null}
   - {categoria: "Renta Fija Local", prefijo: "SX", patron: "SX{MMDDYY}",  area: "Clientes Renta Fija Local", seccion: "Archivos Renta Fija Local", pagina: 1, filtro: null}
