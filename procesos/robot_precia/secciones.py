@@ -10,10 +10,10 @@ Para cada area se necesita:
   botones     : {nombre_seccion -> selector CSS del boton del menu}.
   filtros     : {nombre_seccion -> selector CSS del input de filtro} (opcional).
 
-ESTADO:
-  - "Clientes Renta Fija Local": CONFIRMADO (mismo login/area de impugnacion).
-  - Las demas areas: PENDIENTES de mapear (Bloque 2) -> valores "TODO:".
-    Se capturan con:  python scripts/explorar_portal.py --volcar --area <landing_url>
+ESTADO: las 4 areas estan CONFIRMADAS y probadas en real. Si algun dia se agrega
+una seccion nueva, se captura con:
+    python scripts/explorar_robot.py --url <landing_url> [--boton "#idBoton"]
+y se completan aqui sus selectores (los que falten quedan como "TODO").
 """
 
 from __future__ import annotations
@@ -23,7 +23,7 @@ TODO = "TODO"
 
 
 SECCIONES: dict[str, dict] = {
-    # ---- CONFIRMADO: es la misma area que ya automatizamos en impugnacion_rfl ----
+    # ---- CONFIRMADO: area/login del portal ya validados en real ----
     "Clientes Renta Fija Local": {
         "landing_url": "https://www.precia.co/index.php/renta-fija/",
         "iframe": "BranderFrame",
@@ -38,7 +38,6 @@ SECCIONES: dict[str, dict] = {
         "filtros": {},  # estas secciones no llevan filtro de texto
     },
 
-    # ---- PENDIENTES DE MAPEAR (capturar landing_url + selectores) ----
     "Clientes Renta Variable": {
         "landing_url": "https://www.precia.co/index.php/renta-variable/",  # CONFIRMADO
         "iframe": "BranderFrame",

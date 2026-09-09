@@ -12,7 +12,7 @@ descripcion: >
 criticidad: alta
 trigger: "scheduler (Programador de Tareas, 04:00 todos los dias)"
 dependencias:
-  - "Portal Precia (Selenium) - mismas credenciales que impugnacion_rfl"
+  - "Portal Precia (Selenium) - credenciales en .env (PRECIA_USUARIO/CLAVE)"
   - "Ruta unica de destino (sandbox en test, UNC en prod)"
 etapas:
   extract: "planificar: fechas objetivo (t-1; lunes = fin de semana) x insumos"

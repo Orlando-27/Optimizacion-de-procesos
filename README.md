@@ -1,34 +1,43 @@
-# Motor de Optimización de Procesos
+# Robot Precia — Descarga diaria de insumos
 
-Plataforma de automatización de procesos operativos. Cada proceso se escribe una
-vez sobre un **contrato común** (`extract → transform → load → validate`) y se
-ejecuta desatendido, con registro de corridas, validaciones y alertas.
+Robot de **web scraping (Selenium)** que descarga los insumos del portal de
+**Precia** todos los días de forma desatendida (Programador de Tareas de Windows).
 
-**Proceso 001:** [`impugnacion_rfl`](procesos/impugnacion_rfl/DOCUMENTACION.md) —
-Impugnación de Precios de Renta Fija Local.
+Está construido sobre un **contrato común** (`extract → transform → load →
+validate`) con registro de corridas, reintentos, idempotencia y alertas por
+correo. Diseñado para Windows pero **portable a GCP** (todo el I/O específico
+—portal, correo, almacenamiento— está detrás de adaptadores intercambiables).
 
-> Diseñado para correr hoy en Windows (Programador de Tareas) pero **portable a
-> GCP sin reescribir**: todo el I/O específico está detrás de adaptadores
-> intercambiables (correo, portal, macro, storage).
+> Proceso: [`procesos/robot_precia/DOCUMENTACION.md`](procesos/robot_precia/DOCUMENTACION.md)
+> · Puesta en marcha en 2 máquinas: [`PROGRAMADOR_DE_TAREAS.md`](procesos/robot_precia/PROGRAMADOR_DE_TAREAS.md)
 
 ---
 
 ## Estructura
 
 ```
-core/                 ← genérico y reutilizable por procesos futuros
+core/                 ← motor genérico, reutilizable
 ├── contract.py       ← Proceso(ABC), ProcessContext/Result, RunStatus, run()
 ├── config.py         ← carga config.yaml + .env (pydantic)
 ├── secrets.py        ← keyring (Windows Credential Manager) → .env
 ├── logging_config.py ← logs JSON con run_id/process_id + enmascarado de secretos
-├── run_store.py      ← registro de corridas (SQLite, esquema listo para BigQuery)
-├── runner.py         ← ejecuta un proceso, persiste y alerta
-├── notifications.py  ← alerta al owner ante fallo
-└── adapters/         ← MailClient / Storage / Transformador (+ implementaciones)
+├── run_store.py      ← registro de corridas (SQLite, listo para BigQuery)
+├── runner.py         ← ejecuta un proceso, persiste y notifica
+├── notifications.py  ← correo de reporte (descargados/fallidos) y alertas
+└── adapters/         ← MailClient / Storage / Portal (+ implementaciones)
 
-procesos/impugnacion_rfl/   ← ver procesos/impugnacion_rfl/DOCUMENTACION.md
-scripts/                    ← verificar_entorno / inspeccionar_macro / explorar_portal
-run_impugnacion.bat         ← entrypoint para el Programador de Tareas
+procesos/robot_precia/      ← el robot (ver su DOCUMENTACION.md)
+├── process.py        ← contrato ETL + CLI
+├── navegador.py      ← navegación/descarga (3 flujos: directo/agrupador/consulta)
+├── portal_precia.py  ← login/driver/datepicker/espera de descarga (Selenium)
+├── secciones.py      ← mapa de áreas/secciones del portal
+├── insumos.yaml      ← catálogo de insumos a descargar
+├── fechas.py         ← lógica t-1 (+ fin de semana los lunes)
+└── config.yaml       ← rutas, correo, backends por entorno (test/prod)
+
+scripts/                    ← verificar_entorno / explorar_robot / explorar_portal
+run_robot_precia.bat        ← entrypoint máquina PRIMARIA (04:00)
+run_robot_precia_respaldo.bat ← entrypoint máquina RESPALDO (05:00, --respaldo)
 ```
 
 ---
@@ -36,20 +45,17 @@ run_impugnacion.bat         ← entrypoint para el Programador de Tareas
 ## Instalación
 
 ```bash
-# 1. Crear entorno virtual
-python -m venv .venv
-# Windows:
-.venv\Scripts\activate
-# Linux/Mac:
-source .venv/bin/activate
+# Con Anaconda (recomendado en la oficina)
+conda create -n motor2 python=3.12 -y
+conda activate motor2
+pip install -e .            # o: pip install -e ".[dev]" para correr tests
+```
 
-# 2. Instalar
-pip install -e .
-# En el equipo Windows de producción, además:
-pip install -e ".[windows,macro]"     # pywin32 (COM) + oletools (inspección VBA)
+Credenciales del portal en un archivo `.env` (o Windows Credential Manager):
 
-# 3. Configurar secretos
-copy .env.example .env                 # (cp en Linux) y rellenar credenciales
+```
+PRECIA_USUARIO=tu_usuario
+PRECIA_CLAVE=tu_clave
 ```
 
 ---
@@ -57,95 +63,35 @@ copy .env.example .env                 # (cp en Linux) y rellenar credenciales
 ## Uso
 
 ```bash
-# Diagnóstico previo (¡correr esto primero!)
-python scripts/verificar_entorno.py --entorno test
+# Ver el plan (qué se descargaría) sin tocar el portal
+python -m procesos.robot_precia.process --plan --fecha 2026-09-09
 
-# Corrida completa en test (no toca producción, correo queda en borrador)
-python -m procesos.impugnacion_rfl.process --entorno test
+# Corrida real (entorno se toma de config.yaml; --headed = con ventana)
+python -m procesos.robot_precia.process --entorno test --portal selenium --headed
 
-# Depuración
-python -m procesos.impugnacion_rfl.process --dry-run
-python -m procesos.impugnacion_rfl.process --paso 3
-python -m procesos.impugnacion_rfl.process --simular-correo cuerpo.txt
+# Solo una sección (para probar aislado)
+python -m procesos.robot_precia.process --solo "Clientes Derivados" --headed
 
-# Tests
-pytest -q
+# Modo respaldo (máquina de las 5 a.m.): baja solo lo que falte
+python -m procesos.robot_precia.process --respaldo
 ```
 
+Diagnóstico opcional: `set ROBOT_DUMP_FILAS=1` hace que el log liste los nombres
+reales de las filas de cada tabla (útil para mapear un área nueva o depurar).
+
 ---
 
-## Pasar de `test` a `prod`
+## Producción
 
-Editar `procesos/impugnacion_rfl/config.yaml`:
+1. `config.yaml`: `entorno: prod`, `rutas.prod` (carpeta de red compartida) y
+   `alertas.destinatarios.prod` (correos reales).
+2. `.env` con las credenciales del portal en cada máquina.
+3. Crear las tareas del Programador siguiendo
+   [`PROGRAMADOR_DE_TAREAS.md`](procesos/robot_precia/PROGRAMADOR_DE_TAREAS.md)
+   (primaria 04:00 + respaldo 05:00, ambas apuntando a la misma carpeta).
 
-1. `entorno: prod`
-2. **Rutas UNC** en `rutas.prod` — reemplazar `SERVIDOR` por el host real
-   (ver abajo). **Nunca usar `M:\`** (el Programador de Tareas en sesión no
-   interactiva no ve las unidades mapeadas).
-3. `backend_correo.prod` y `backend_portal.prod` (`smtp_imap`/`outlook_com`, `selenium`).
-4. `correo_salida.destinatarios.prod` — confirmar la lista real.
-5. `excel.motor: python` **(requiere completar el PASO 5)**.
-6. Cargar credenciales reales en `.env` o Windows Credential Manager.
+## Tests
 
-### Obtener el UNC real de `M:`
-En el equipo, con `M:` mapeada:
-```cmd
-net use
+```bash
+python -m pytest -q
 ```
-Copiar la columna *Recurso remoto* (`\\servidor\share`) y componer las rutas UNC
-completas en `config.yaml`.
-
----
-
-## Programar la tarea (Windows)
-
-El proceso se dispara **una vez** a las 15:45 y hace *polling* del correo hasta
-las 16:20. Crear la tarea (L-V, corre aunque el usuario no haya iniciado sesión):
-
-```cmd
-schtasks /Create ^
-  /TN "Motor\impugnacion_rfl" ^
-  /TR "\"C:\ruta\al\proyecto\run_impugnacion.bat\"" ^
-  /SC WEEKLY /D MON,TUE,WED,THU,FRI ^
-  /ST 15:45 ^
-  /RU "DOMINIO\usuario" /RP * ^
-  /RL HIGHEST /F
-```
-
-⚠️ **Advertencias de sesión no interactiva:**
-- Marcar *"Ejecutar aunque el usuario no haya iniciado sesión"* (implícito con `/RU`+`/RP`).
-- Con esa opción, **las unidades mapeadas (`M:`) NO están disponibles** → usar UNC.
-- Si se usa el backend `outlook_com`, Outlook debe poder abrirse en esa sesión
-  (COM en sesión no interactiva es frágil; por eso el backend portable
-  `smtp_imap` es el recomendado para desatendido).
-
----
-
-## Qué revisar cuando algo falle
-
-| Síntoma | Dónde mirar |
-|---|---|
-| ¿Qué pasó en la corrida? | `logs/impugnacion_YYYYMMDD.log` (stdout) y `logs/impugnacion_rfl_YYYYMMDD.jsonl` (estructurado) |
-| Historial y estados | `logs/runs.db` → `RunStore.consultar_recientes()` (status, duración, traceback) |
-| "No llegó el correo de Precia" | ¿llegó a Outlook? ¿remitente/asunto correctos en `config.yaml`? |
-| Falla el login/descarga del portal | screenshot en `logs/` + selectores en `portal_precia.py` (¿capturados?) |
-| `PASO PENDIENTE` / `PasoPendienteError` | el paso 5 aún no está migrado — ver `PENDIENTE_PASO_5.md` |
-| Rutas UNC no accesibles en prod | sesión no interactiva no ve `M:`; validar UNC con `net use` |
-| El correo se envió a quien no debía | revisar `entorno` y `destinatarios`; en `test` está bloqueado mandar a la lista de prod |
-
----
-
-## Seguridad
-
-- Ningún secreto en código, logs ni en el `.bat`. Se leen de `.env` o Windows
-  Credential Manager; los logs enmascaran cualquier valor sensible.
-- `.gitignore` excluye `.env`, `sandbox/`, `logs/`, `*.xlsx` y las bases `*.db`.
-
----
-
-## Estado
-
-- ✅ Núcleo (`core/`), parser, validaciones, orquestación, registro y envío: **funcionando en test**.
-- ✅ 32 tests en verde (`pytest`).
-- ⏳ **Pendiente: PASO 5** (migrar la macro a Python) — ver
-  [`procesos/impugnacion_rfl/PENDIENTE_PASO_5.md`](procesos/impugnacion_rfl/PENDIENTE_PASO_5.md).

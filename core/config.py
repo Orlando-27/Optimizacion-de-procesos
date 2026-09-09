@@ -119,14 +119,6 @@ class Config(BaseModel):
         return {k: Path(v) for k, v in getattr(self.rutas, self.entorno).items()}
 
     @property
-    def infovalmer(self) -> Path:
-        return self.rutas_activas["infovalmer"]
-
-    @property
-    def impugnacion(self) -> Path:
-        return self.rutas_activas["impugnacion"]
-
-    @property
     def destinatarios_activos(self) -> list[str]:
         return self.correo_salida.destinatarios[self.entorno]
 

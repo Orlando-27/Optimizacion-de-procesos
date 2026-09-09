@@ -1,7 +1,7 @@
 """Navegacion y descarga de insumos del portal de Precia (Robot Precia).
 
 Reutiliza el login/driver/datepicker/espera-de-descarga ya PROBADOS en
-``impugnacion_rfl.portal_precia.PortalPreciaSelenium`` y agrega la navegacion
+``robot_precia.portal_precia.PortalPreciaSelenium`` y agrega la navegacion
 por las distintas areas/secciones (segun ``secciones.py``) para cada insumo.
 
 Flujo por insumo (NavegadorSelenium.descargar):
@@ -89,7 +89,7 @@ class NavegadorSelenium(NavegadorPrecia):
         from selenium.webdriver.support.ui import WebDriverWait
 
         from core.secrets import secretos_del_portal
-        from procesos.impugnacion_rfl.portal_precia import PortalPreciaSelenium
+        from procesos.robot_precia.portal_precia import PortalPreciaSelenium
 
         usuario, clave = secretos_del_portal()
         if not (usuario and clave):

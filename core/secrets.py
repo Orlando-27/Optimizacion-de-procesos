@@ -20,7 +20,10 @@ try:  # keyring es opcional (puede no estar en el contenedor Linux de dev)
 except Exception:  # noqa: BLE001
     keyring = None  # type: ignore
 
-_SERVICIO_KEYRING = "motor-procesos/impugnacion_rfl"
+# Servicio bajo el que se guardan los secretos en el Credential Manager.
+# Se prueba el nombre actual y, por compatibilidad, el historico (por si ya
+# habia credenciales guardadas con el nombre anterior).
+_SERVICIOS_KEYRING = ("motor-procesos/precia", "motor-procesos/impugnacion_rfl")
 _env_cargado = False
 
 
@@ -42,12 +45,13 @@ def _cargar_env(ruta_env: Optional[Path] = None) -> None:
 def obtener_secreto(nombre: str, ruta_env: Optional[Path] = None) -> Optional[str]:
     """Devuelve el secreto ``nombre`` segun el orden de preferencia, o None."""
     if keyring is not None:
-        try:
-            val = keyring.get_password(_SERVICIO_KEYRING, nombre)
-            if val:
-                return val
-        except Exception:  # noqa: BLE001 - backend no disponible -> siguiente fuente
-            pass
+        for servicio in _SERVICIOS_KEYRING:
+            try:
+                val = keyring.get_password(servicio, nombre)
+                if val:
+                    return val
+            except Exception:  # noqa: BLE001 - backend no disponible -> siguiente fuente
+                break
     _cargar_env(ruta_env)
     return os.environ.get(nombre)
 

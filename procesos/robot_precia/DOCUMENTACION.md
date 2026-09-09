@@ -2,7 +2,7 @@
 
 Robot de **web scraping con Selenium** que descarga ~43 insumos del portal de
 Precia todos los días a las **04:00** (Programador de Tareas). Reutiliza el
-motor (`core/`) y el **login del portal ya probado** en `impugnacion_rfl`.
+motor (`core/`) y un **login del portal ya probado** (`portal_precia.py`).
 
 > **Estado: COMPLETO — 44/44 insumos descargados y validados en real** (portal
 > de Precia, en el equipo de la oficina). Las 4 áreas quedan cableadas y probadas:
@@ -69,8 +69,11 @@ python -m procesos.robot_precia.process --plan --fecha 2026-09-07   :: lunes (fi
 :: Corrida en test (navegador simulado: crea placeholders en la ruta destino)
 python -m procesos.robot_precia.process --entorno test
 
-:: Descarga REAL (cuando esté el Bloque 3), con ventana:
+:: Descarga REAL, con ventana:
 python -m procesos.robot_precia.process --entorno test --portal selenium --headed
+
+:: Modo respaldo (máquina de las 5 a.m.): baja solo lo que falte
+python -m procesos.robot_precia.process --respaldo
 ```
 
 ## 5. Programar la tarea (todos los días 04:00)
@@ -84,9 +87,11 @@ schtasks /Create ^
   /RU "DOMINIO\usuario" /RP * ^
   /RL HIGHEST /F
 ```
-⚠️ Igual que impugnación: sesión no interactiva **no ve `M:`** → usar UNC; si la
-descarga necesita ventana (headless falla en las apps JSF), la tarea debe correr
-con sesión de usuario iniciada.
+⚠️ Una sesión no interactiva **no ve unidades mapeadas (`M:`)** → usar rutas UNC
+(`\\servidor\...`); y como la descarga necesita ventana (headless falla en las
+apps JSF), la tarea debe correr con **sesión de usuario iniciada**. Para el
+esquema completo de 2 máquinas (04:00 + respaldo 05:00) ver
+`PROGRAMADOR_DE_TAREAS.md`.
 
 ## 6. Lo que queda PENDIENTE (solo para producción)
 

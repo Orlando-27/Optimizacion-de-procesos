@@ -191,7 +191,7 @@ def _componer_html(config: Config, res: ProcessResult) -> str:
     )
     return f"""\
 <div style="font-family:Calibri,Arial,sans-serif;font-size:11pt;color:#1f1f1f">
-  <p><b style="color:#B00020">El proceso de Impugnación RFL NO se pudo ejecutar.</b></p>
+  <p><b style="color:#B00020">El proceso «{html.escape(res.process_id)}» NO se pudo ejecutar.</b></p>
   <table style="border-collapse:collapse">{tabla}</table>
   <p style="margin-top:12px;color:#555">Detalle técnico:</p>
   <pre style="background:#f6f6f6;border:1px solid #ddd;padding:8px;

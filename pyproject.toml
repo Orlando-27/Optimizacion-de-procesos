@@ -5,7 +5,7 @@ build-backend = "setuptools.build_meta"
 [project]
 name = "motor-procesos"
 version = "0.1.0"
-description = "Motor de Optimizacion de Procesos - Proceso 001: impugnacion_rfl"
+description = "Robot Precia - descarga diaria de insumos del portal de Precia"
 requires-python = ">=3.11"
 dependencies = [
     "pydantic>=2.6",

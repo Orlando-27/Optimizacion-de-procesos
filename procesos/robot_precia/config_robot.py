@@ -1,7 +1,7 @@
 """Configuracion del Robot Precia (config.yaml + insumos.yaml), validada con pydantic.
 
-Se mantiene aparte de la config de impugnacion_rfl porque el robot no necesita
-correo de entrada/salida: solo descarga insumos. Reutiliza el mismo estilo:
+El robot no necesita correo de entrada/salida: solo descarga insumos.
+Reutiliza el mismo estilo de configuracion del motor:
 interruptor ``entorno: test | prod`` que cambia rutas, destinatarios de alerta
 y efectos secundarios.
 """

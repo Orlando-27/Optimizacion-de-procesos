@@ -74,7 +74,7 @@ def main() -> int:
     args = p.parse_args()
 
     from core.secrets import secretos_del_portal
-    from procesos.impugnacion_rfl.portal_precia import PortalPreciaSelenium
+    from procesos.robot_precia.portal_precia import PortalPreciaSelenium
     from selenium.webdriver.common.by import By
     from selenium.webdriver.support.ui import WebDriverWait
 

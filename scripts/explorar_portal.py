@@ -91,7 +91,7 @@ def main() -> int:
     args = p.parse_args()
 
     from core.secrets import secretos_del_portal
-    from procesos.impugnacion_rfl.portal_precia import (
+    from procesos.robot_precia.portal_precia import (
         PortalPreciaSelenium, URL_AREA_CLIENTES, SEL_BTN_ARCHIVOS_RFL,
     )
     from selenium.webdriver.common.by import By

@@ -2,7 +2,7 @@
 
 Es el pegamento entre ``Proceso.run`` (logica pura), ``RunStore`` (persistencia)
 y ``notifications`` (alertas al owner). No conoce nada especifico de
-impugnacion_rfl: cualquier proceso del motor se ejecuta por aca.
+robot_precia: cualquier proceso del motor se ejecuta por aca.
 """
 
 from __future__ import annotations

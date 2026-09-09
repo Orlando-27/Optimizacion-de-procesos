@@ -1,7 +1,7 @@
 """Fabrica de MailClient (emisor) reutilizable por cualquier proceso.
 
 Centraliza la creacion del backend de correo segun su nombre, para que tanto
-impugnacion_rfl como robot_precia (y procesos futuros) envien correos/alertas
+robot_precia (y procesos futuros) envien correos/alertas
 sin duplicar la logica.
 """
 
