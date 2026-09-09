@@ -52,7 +52,8 @@ procesos/robot_precia/
 ├── navegador.py       ← NavegadorSimulado (test) / NavegadorSelenium (real)
 ├── fechas.py          ← lógica t-1 / lunes=fin de semana + render de nombres
 ├── config_robot.py    ← modelo de config (pydantic) + carga de insumos
-├── config.yaml        ← entorno, ruta única, fecha, backends, alertas
+├── parametros.yaml    ← RUTAS y CORREOS reales (lo edita el usuario)
+├── config.yaml        ← ajustes técnicos (backends, timeouts, fechas)
 ├── insumos.yaml       ← MANIFIESTO: los ~43 insumos (categoría, prefijo, ruta…)
 ├── manifest.yaml      ← metadatos del proceso
 ├── tests/             ← tests de fechas y del manifiesto
@@ -99,9 +100,9 @@ El scraping de las 44 secciones YA está mapeado, cableado y probado en real.
 Lo único que resta es la puesta en producción:
 
 - **Ruta de destino real (prod):** hoy es `./sandbox/robot_precia` en `test`.
-  Poner la ruta/UNC definitiva en `config.yaml` (`rutas.prod`).
+  Poner la ruta/UNC definitiva en `parametros.yaml` (`carpeta_destino.prod`).
 - **Destinatarios reales de la alerta:** hoy son correos de prueba en
-  `config.yaml` (`alertas.prod.destinatarios`). Reemplazar por los reales.
+  `parametros.yaml` (`receptores.prod`). Reemplazar por los reales.
 - **Backend de correo/portal en prod:** ya configurados (`outlook_com` /
   `selenium`); confirmar credenciales del portal en `.env` del equipo.
 - **Programador de Tareas** a las 04:00 (Lun–Dom) con sesión de usuario

@@ -100,9 +100,51 @@ class Insumo(BaseModel):
     filtro: Optional[str] = None
 
 
+def _aplicar_parametros(base: dict, params: dict) -> None:
+    """Superpone los valores del archivo del usuario (parametros.yaml) sobre la
+    config tecnica (config.yaml). Solo toca lo que el usuario debe editar:
+    entorno, carpeta de destino, remitente y receptores/CC del correo."""
+    if params.get("entorno"):
+        base["entorno"] = params["entorno"]
+
+    base.setdefault("rutas", {})
+    cd = params.get("carpeta_destino") or {}
+    if isinstance(cd, dict):
+        for env in ("test", "prod"):
+            if cd.get(env):
+                base["rutas"][env] = cd[env]
+
+    al = base.setdefault("alertas", {})
+    if params.get("remitente"):
+        al["owner"] = params["remitente"]
+    dest = al.setdefault("destinatarios", {})
+    rec = params.get("receptores") or {}
+    if isinstance(rec, dict):
+        for env in ("test", "prod"):
+            if rec.get(env) is not None:
+                dest[env] = rec[env]
+    ccd = al.setdefault("cc", {})
+    cc = params.get("copia_cc") or {}
+    if isinstance(cc, dict):
+        for env in ("test", "prod"):
+            if cc.get(env) is not None:
+                ccd[env] = cc[env]
+
+
 def cargar_config(ruta_yaml: str | Path) -> ConfigRobot:
-    with Path(ruta_yaml).open("r", encoding="utf-8") as f:
-        return ConfigRobot.model_validate(yaml.safe_load(f))
+    """Carga config.yaml (tecnica) y, si existe junto a ella ``parametros.yaml``
+    (el archivo que edita el usuario), superpone rutas y correos reales."""
+    ruta_yaml = Path(ruta_yaml)
+    with ruta_yaml.open("r", encoding="utf-8") as f:
+        base = yaml.safe_load(f) or {}
+
+    ruta_params = ruta_yaml.parent / "parametros.yaml"
+    if ruta_params.exists():
+        with ruta_params.open("r", encoding="utf-8") as f:
+            params = yaml.safe_load(f) or {}
+        _aplicar_parametros(base, params)
+
+    return ConfigRobot.model_validate(base)
 
 
 def cargar_insumos(ruta_yaml: str | Path) -> list[Insumo]:

@@ -19,7 +19,7 @@ y **una máquina de respaldo a las 05:00** que solo actúa si la primera falló.
 > **Requisito clave:** las dos máquinas deben apuntar a la **MISMA carpeta de
 > destino** (una ruta de red compartida, p. ej. `\\servidor\insumos\precia`).
 > Si cada una guarda en su disco local, el respaldo no puede "ver" lo que bajó la
-> primaria. Configúrala en `config.yaml` → `rutas.prod`.
+> primaria. Configúrala en `parametros.yaml` → `carpeta_destino.prod`.
 
 ---
 
@@ -30,10 +30,11 @@ y **una máquina de respaldo a las 05:00** que solo actúa si la primera falló.
    - Si tu `python.exe` no está en `%USERPROFILE%\anaconda3\envs\motor2\`, edita
      la línea `set "PYEXE=..."` de los `.bat` con la ruta real.
 3. **Credenciales del portal** en el archivo `.env` (usuario/clave de Precia).
-4. **`config.yaml` en modo producción:** cambia arriba `entorno: prod` para que
-   use la ruta real, el correo real (Outlook) y el navegador Selenium.
-   - `rutas.prod` = la carpeta de red compartida.
-   - `alertas.destinatarios.prod` = los correos que reciben el reporte.
+4. **`parametros.yaml` en modo producción** (único archivo que editas):
+   - `entorno: prod`
+   - `carpeta_destino.prod` = la carpeta de red compartida (UNC).
+   - `receptores.prod` = los correos que reciben el reporte.
+   - `remitente` = buzón de Outlook que envía (ya viene jbobadilla@...).
 5. **Chrome** instalado (Selenium Manager resuelve el driver solo).
 
 > **Importante (navegador con ventana):** las páginas del portal (JSF) fallan en
@@ -126,7 +127,7 @@ descargas que rescató.
 - **`python` no encontrado:** edita `set "PYEXE=..."` en los dos `.bat` con la
   ruta real al `python.exe` del entorno `motor2`.
 - **El respaldo baja todo igual (no ve lo de la primaria):** las dos máquinas no
-  están apuntando a la misma carpeta. Revisa `rutas.prod` en `config.yaml`.
+  están apuntando a la misma carpeta. Revisa `carpeta_destino.prod` en `parametros.yaml`.
 - **Reintentos:** cada insumo se reintenta hasta 3 veces recargando la sección
   (resuelve descargas "flaky" como `800149496_Colf_NE`). Si aun así falla, sale
   en la lista de "no descargados" del correo.

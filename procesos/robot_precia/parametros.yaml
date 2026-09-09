@@ -1,0 +1,39 @@
+# =====================================================================
+#  PARÁMETROS DEL ROBOT PRECIA  —  EDITA SOLO ESTE ARCHIVO
+# =====================================================================
+#  Aquí van las RUTAS y los CORREOS reales. No necesitas tocar el código
+#  ni config.yaml: lo que pongas aquí manda.
+#
+#  Cómo editar:
+#   - Usa comillas dobles en las rutas.
+#   - Las rutas de red van en formato UNC: \\servidor\carpeta\... (NO "M:\").
+#     En YAML, cada "\" se escribe doble: \\\\servidor\\carpeta\\...
+#   - Guarda el archivo y vuelve a ejecutar el robot. Listo.
+# =====================================================================
+
+# ¿En qué modo corre?  "test" = pruebas (guarda en carpeta local y el correo
+# queda como BORRADOR).  "prod" = producción (ruta de red real y envía correo).
+entorno: "test"
+
+# --- Carpeta donde se guardan los insumos descargados --------------------
+carpeta_destino:
+  test: "./sandbox/robot_precia"                 # para pruebas en tu PC
+  prod: "\\\\SERVIDOR\\COB\\Gerencia Estrategia\\Analisis Cuantitativo\\BDatos\\INSUMOS_PRECIA"
+  # ^ REEMPLAZA por la ruta de red real (la MISMA en las dos máquinas).
+
+# --- Quién ENVÍA el correo (buzón de Outlook en las máquinas) ------------
+remitente: "jbobadilla@colfondos.com.co"
+
+# --- Quiénes RECIBEN el correo (reporte diario y alertas) ----------------
+#  Puedes poner uno o varios; agrega/quita líneas con "  - ".
+receptores:
+  test:
+    - "joseorlando202014@gmail.com"              # a dónde llega en pruebas
+  prod:
+    - "jbobadilla@colfondos.com.co"              # REEMPLAZA / agrega los reales
+    - "persona2@colfondos.com.co"                # REEMPLAZA / agrega los reales
+
+# --- Copia (CC) del correo, opcional -------------------------------------
+copia_cc:
+  test: []
+  prod: []

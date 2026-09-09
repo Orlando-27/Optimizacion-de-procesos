@@ -33,9 +33,10 @@ procesos/robot_precia/      ← el robot (ver su DOCUMENTACION.md)
 ├── secciones.py      ← mapa de áreas/secciones del portal
 ├── insumos.yaml      ← catálogo de insumos a descargar
 ├── fechas.py         ← lógica t-1 (+ fin de semana los lunes)
-└── config.yaml       ← rutas, correo, backends por entorno (test/prod)
+├── parametros.yaml   ← ⭐ RUTAS y CORREOS reales (lo edita el usuario)
+└── config.yaml       ← ajustes técnicos (backends, timeouts)
 
-scripts/                    ← verificar_entorno / explorar_robot / explorar_portal
+scripts/                    ← explorar_robot / explorar_portal (mapear/depurar)
 run_robot_precia.bat        ← entrypoint máquina PRIMARIA (04:00)
 run_robot_precia_respaldo.bat ← entrypoint máquina RESPALDO (05:00, --respaldo)
 ```
@@ -83,8 +84,9 @@ reales de las filas de cada tabla (útil para mapear un área nueva o depurar).
 
 ## Producción
 
-1. `config.yaml`: `entorno: prod`, `rutas.prod` (carpeta de red compartida) y
-   `alertas.destinatarios.prod` (correos reales).
+1. **`parametros.yaml`** (único archivo que editas): `entorno: prod`, la
+   `carpeta_destino.prod` (carpeta de red compartida) y los `receptores.prod`
+   (correos reales). El remitente ya es el buzón de Outlook.
 2. `.env` con las credenciales del portal en cada máquina.
 3. Crear las tareas del Programador siguiendo
    [`PROGRAMADOR_DE_TAREAS.md`](procesos/robot_precia/PROGRAMADOR_DE_TAREAS.md)
