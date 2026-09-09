@@ -6,6 +6,8 @@
 # Sandbox de pruebas y salidas
 sandbox/
 logs/
+# Insumos descargados por el robot (no se versionan)
+insumos/
 *.xlsx
 *.xlsm~
 ~$*

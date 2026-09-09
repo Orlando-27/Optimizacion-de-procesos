@@ -14,10 +14,12 @@ entorno: "prod"
 
 # --- Carpeta donde se guardan los insumos --------------------------------
 carpeta_destino:
-  test: "./sandbox/robot_precia"
-  # 👇 REEMPLAZA por la ruta de red real (UNC \\servidor\...); LA MISMA en las
-  #    dos máquinas (primaria y respaldo). Recuerda: cada "\" se escribe doble.
-  prod: "\\\\SERVIDOR\\COB\\Gerencia Estrategia\\Analisis Cuantitativo\\BDatos\\INSUMOS_PRECIA"
+  test: "./insumos"
+  # Por ahora, la carpeta "insumos" dentro del motor. Cuando tengas la carpeta
+  # de red compartida, cámbiala por la ruta UNC real (\\servidor\...), LA MISMA
+  # en las dos máquinas. Recuerda: en YAML cada "\" se escribe doble.
+  prod: "./insumos"
+  # prod: "\\\\SERVIDOR\\COB\\Gerencia Estrategia\\Analisis Cuantitativo\\BDatos\\INSUMOS_PRECIA"
 
 # --- Quién ENVÍA el correo (buzón de Outlook en las máquinas) ------------
 remitente: "jbobadilla@colfondos.com.co"

@@ -17,9 +17,9 @@ entorno: "test"
 
 # --- Carpeta donde se guardan los insumos descargados --------------------
 carpeta_destino:
-  test: "./sandbox/robot_precia"                 # para pruebas en tu PC
-  prod: "\\\\SERVIDOR\\COB\\Gerencia Estrategia\\Analisis Cuantitativo\\BDatos\\INSUMOS_PRECIA"
-  # ^ REEMPLAZA por la ruta de red real (la MISMA en las dos máquinas).
+  test: "./insumos"                              # carpeta "insumos" dentro del motor
+  prod: "./insumos"                              # por ahora, misma carpeta del motor
+  # ^ Mas adelante: ruta de red real UNC (\\\\servidor\\...), la MISMA en las 2 maquinas.
 
 # --- Quién ENVÍA el correo (buzón de Outlook en las máquinas) ------------
 remitente: "jbobadilla@colfondos.com.co"

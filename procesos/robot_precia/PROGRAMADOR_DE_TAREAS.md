@@ -92,7 +92,22 @@ schtasks /Create /TN "Robot Precia - Respaldo 05:00" /TR "C:\motor-procesos-v2\r
 
 ---
 
-## 4. Probar sin esperar a la madrugada
+## 4. Chequeo previo (antes de programar) — recomendado
+
+Valida en segundos que la **carpeta de destino** se puede escribir, que están las
+**credenciales** del portal, y que Chrome/Selenium responden — sin descargar nada
+ni imprimir secretos:
+
+```
+python scripts\verificar_prod.py
+```
+
+Si todo lo crítico está OK termina con `TODO LO CRITICO ESTA LISTO`. Córrelo en
+**las dos máquinas** (sobre todo para confirmar que ambas ven la carpeta de red).
+
+---
+
+## 5. Probar sin esperar a la madrugada
 
 - Ejecutar la tarea a demanda: Programador → clic derecho en la tarea →
   **Ejecutar**. O por consola:
@@ -105,7 +120,7 @@ schtasks /Create /TN "Robot Precia - Respaldo 05:00" /TR "C:\motor-procesos-v2\r
 
 ---
 
-## 5. Qué correo llega
+## 6. Qué correo llega
 
 Cada corrida envía **un** correo de reporte a `alertas.destinatarios` con:
 - Asunto: `[OK] Robot Precia: N OK / M fallaron (NOMBRE-EQUIPO)` — o `[ALERTA] …`
@@ -120,7 +135,7 @@ descargas que rescató.
 
 ---
 
-## 6. Notas / solución de problemas
+## 7. Notas / solución de problemas
 
 - **No abre Chrome / "no interactive session":** la sesión del usuario debe estar
   iniciada (ver nota de la sección 1). Configura inicio de sesión automático.
