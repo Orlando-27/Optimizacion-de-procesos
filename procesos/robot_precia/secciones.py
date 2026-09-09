@@ -47,17 +47,26 @@ SECCIONES: dict[str, dict] = {
     "Clientes Derivados": {
         "landing_url": "https://www.precia.co/index.php/derivados/",  # CONFIRMADO
         "iframe": "BranderFrame",
+        # CONFIRMADO: el boton del menu es #descagrup (carga
+        # descargaArchivosAgrupador.xhtml). Las 4 sub-secciones pasan por el mismo
+        # boton; DENTRO del agrupador se elige el "grupo" (Insumos Locales / Swaps
+        # Internacionales / Forward Internacionales / Otros) -> ese selector y el
+        # del filtro estan PENDIENTES de capturar (dump de esa pagina).
         "botones": {
-            # La ruta real es "Descargar Archivo Agrupador" y dentro se elige el
-            # grupo (Insumos Locales / Swaps Internacionales / Forward Intl / Otros).
+            "Descargar Archivo Agrupador > Insumos Locales": "#descagrup",
+            "Descargar Archivo Agrupador > Insumos Swaps Internacionales": "#descagrup",
+            "Descargar Archivo Agrupador > Insumos Forward Internacionales": "#descagrup",
+            "Descargar Archivo Agrupador > Otros Insumos": "#descagrup",
+        },
+        # PENDIENTE: selector del "grupo" (dropdown) y del filtro de texto (FWD/SWAPCC).
+        "grupos": {
             "Descargar Archivo Agrupador > Insumos Locales": TODO,
             "Descargar Archivo Agrupador > Insumos Swaps Internacionales": TODO,
             "Descargar Archivo Agrupador > Insumos Forward Internacionales": TODO,
             "Descargar Archivo Agrupador > Otros Insumos": TODO,
         },
-        # Estas secciones SI llevan filtro de texto ("FWD" / "SWAPCC").
         "filtros": {
-            "Descargar Archivo Agrupador > Insumos Locales": TODO,  # input del filtro
+            "Descargar Archivo Agrupador > Insumos Locales": TODO,
             "Descargar Archivo Agrupador > Insumos Forward Internacionales": TODO,
         },
     },
