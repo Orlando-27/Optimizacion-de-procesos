@@ -150,6 +150,28 @@ class RobotPrecia(Proceso):
         fallidos: list[dict[str, str]] = []
         error_global: Exception | None = None
 
+        # Chequeo temprano de la carpeta de destino: si es una ruta de red caida
+        # o sin permiso, avisar CLARO (no un "error inesperado" de Windows).
+        carpeta = self.cfg.carpeta_destino
+        try:
+            carpeta.mkdir(parents=True, exist_ok=True)
+            probe = carpeta / ".robot_precia_escritura.tmp"
+            probe.write_text("ok", encoding="utf-8")
+            probe.unlink()
+        except Exception as e:  # noqa: BLE001
+            error_global = RuntimeError(
+                f"No se puede acceder o escribir en la carpeta de destino: "
+                f"'{carpeta}'. Revisa la ruta (carpeta_destino en parametros.yaml), "
+                f"que el servidor/recurso de red este disponible y que tengas "
+                f"permiso de escritura. Detalle del sistema: {e}")
+            ctx.logger.error("carpeta_destino_inaccesible",
+                             extra={"carpeta": str(carpeta), "detalle": str(e)})
+            data.update({"descargados": [], "fallidos": []})
+            if not ctx.dry_run:
+                self._reportar(ctx, descargados=[], fallidos=[], fechas=data["fechas"],
+                               error_global=str(error_global))
+            raise error_global
+
         nav = crear_navegador(self.cfg, ctx.logger)
         try:
             nav.abrir()
