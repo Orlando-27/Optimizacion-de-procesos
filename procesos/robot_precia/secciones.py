@@ -30,6 +30,10 @@ SECCIONES: dict[str, dict] = {
         "botones": {
             "Archivos Renta Fija Local": "#arlo",          # confirmado
             "Archivos Renta Fija Internacional": "#arin",  # confirmado
+            # Reubicado desde Productos Estructurados. El boton es #hisbe, pero
+            # falta capturar la seccion para confirmar su flujo (¿tiene selector
+            # de curva? ¿fecha inline o popup?) y el nombre real del archivo.
+            "Histórico betas": TODO,                       # #hisbe (pendiente captura)
         },
         "filtros": {},  # estas secciones no llevan filtro de texto
     },
