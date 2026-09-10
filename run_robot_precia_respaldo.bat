@@ -7,10 +7,15 @@ REM  La ruta de destino DEBE ser la MISMA en las dos maquinas.
 REM ===================================================================
 cd /d "%~dp0"
 
+REM Entornos con python propio (lo mas comun):
 set "PYEXE=%USERPROFILE%\.conda\envs\motor2\python.exe"
 if not exist "%PYEXE%" set "PYEXE=%USERPROFILE%\anaconda3\envs\motor2\python.exe"
 if not exist "%PYEXE%" set "PYEXE=%USERPROFILE%\AppData\Local\anaconda3\envs\motor2\python.exe"
 if not exist "%PYEXE%" set "PYEXE=C:\ProgramData\anaconda3\envs\motor2\python.exe"
+REM Anaconda base (caso de la 2a maquina: el robot quedo instalado en base):
+if not exist "%PYEXE%" set "PYEXE=C:\ProgramData\anaconda3\python.exe"
+if not exist "%PYEXE%" set "PYEXE=%USERPROFILE%\anaconda3\python.exe"
+if not exist "%PYEXE%" set "PYEXE=%USERPROFILE%\AppData\Local\anaconda3\python.exe"
 
 if not exist "logs" mkdir "logs"
 set "LOG=logs\robot_precia_respaldo.log"
