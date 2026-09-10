@@ -7,20 +7,26 @@ REM  El Programador de Tareas arranca en C:\Windows\System32; fijamos
 REM  el directorio de trabajo a la carpeta del .bat.
 cd /d "%~dp0"
 
-REM --- Interprete de Python -------------------------------------------
-REM  Ajusta PYEXE a tu instalacion de Anaconda/entorno "motor2".
-REM  (Ruta directa al python.exe del entorno; es lo mas robusto para el
-REM   Programador de Tareas, no depende de "activar" el entorno.)
-set "PYEXE=%USERPROFILE%\anaconda3\envs\motor2\python.exe"
-if not exist "%PYEXE%" set "PYEXE=python"
+REM --- Interprete de Python (entorno "motor2") -----------------------
+REM  Se prueban las rutas mas comunes de Anaconda/Miniconda. La tarea NO
+REM  activa conda, por eso hay que apuntar al python.exe del entorno por
+REM  ruta directa (no vale "python" a secas).
+set "PYEXE=%USERPROFILE%\.conda\envs\motor2\python.exe"
+if not exist "%PYEXE%" set "PYEXE=%USERPROFILE%\anaconda3\envs\motor2\python.exe"
+if not exist "%PYEXE%" set "PYEXE=%USERPROFILE%\AppData\Local\anaconda3\envs\motor2\python.exe"
+if not exist "%PYEXE%" set "PYEXE=C:\ProgramData\anaconda3\envs\motor2\python.exe"
 
-REM --- Carpeta de logs y timestamp (YYYYMMDD) ------------------------
 if not exist "logs" mkdir "logs"
-for /f "tokens=1-3 delims=/-. " %%a in ("%date%") do set HOY=%%c%%b%%a
+set "LOG=logs\robot_precia_primaria.log"
 
-REM --- Ejecutar el robot (el entorno se toma de config.yaml) ----------
-"%PYEXE%" -m procesos.robot_precia.process >> "logs\robot_precia_%HOY%.log" 2>&1
+echo. >> "%LOG%"
+echo ===== %date% %time% (primaria) ===== >> "%LOG%"
+if not exist "%PYEXE%" (
+    echo [ERROR] No se encontro python.exe del entorno motor2. Edita PYEXE en este .bat. >> "%LOG%"
+    exit /b 9
+)
+
+"%PYEXE%" -m procesos.robot_precia.process >> "%LOG%" 2>&1
 set EXITCODE=%ERRORLEVEL%
-
-echo Robot Precia (primaria) finalizado con codigo %EXITCODE% >> "logs\robot_precia_%HOY%.log"
+echo Robot Precia (primaria) finalizado con codigo %EXITCODE% >> "%LOG%"
 exit /b %EXITCODE%

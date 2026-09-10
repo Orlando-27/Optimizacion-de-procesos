@@ -1,25 +1,28 @@
 @echo off
 REM ===================================================================
 REM  run_robot_precia_respaldo.bat  -  MAQUINA DE RESPALDO (corre 05:00)
-REM  Igual que la primaria pero en MODO RESPALDO (--respaldo):
-REM   - Revisa la ruta de destino.
-REM   - Si la maquina primaria (04:00) ya bajo TODO -> se salta (SKIPPED),
-REM     sin abrir el navegador, y avisa por correo "[RESPALDO] nada que hacer".
-REM   - Si falta algo (la primaria se apago/reinicio/fallo) -> descarga
-REM     SOLO lo que falta.
-REM  La ruta de destino DEBE ser la MISMA en las dos maquinas (carpeta de
-REM  red compartida), para que el respaldo "vea" lo que bajo la primaria.
+REM  Igual que la primaria pero en MODO RESPALDO (--respaldo): si la
+REM  primaria ya bajo todo, se salta; si falta algo, baja solo lo que falta.
+REM  La ruta de destino DEBE ser la MISMA en las dos maquinas.
 REM ===================================================================
 cd /d "%~dp0"
 
-set "PYEXE=%USERPROFILE%\anaconda3\envs\motor2\python.exe"
-if not exist "%PYEXE%" set "PYEXE=python"
+set "PYEXE=%USERPROFILE%\.conda\envs\motor2\python.exe"
+if not exist "%PYEXE%" set "PYEXE=%USERPROFILE%\anaconda3\envs\motor2\python.exe"
+if not exist "%PYEXE%" set "PYEXE=%USERPROFILE%\AppData\Local\anaconda3\envs\motor2\python.exe"
+if not exist "%PYEXE%" set "PYEXE=C:\ProgramData\anaconda3\envs\motor2\python.exe"
 
 if not exist "logs" mkdir "logs"
-for /f "tokens=1-3 delims=/-. " %%a in ("%date%") do set HOY=%%c%%b%%a
+set "LOG=logs\robot_precia_respaldo.log"
 
-"%PYEXE%" -m procesos.robot_precia.process --respaldo >> "logs\robot_precia_respaldo_%HOY%.log" 2>&1
+echo. >> "%LOG%"
+echo ===== %date% %time% (respaldo) ===== >> "%LOG%"
+if not exist "%PYEXE%" (
+    echo [ERROR] No se encontro python.exe del entorno motor2. Edita PYEXE en este .bat. >> "%LOG%"
+    exit /b 9
+)
+
+"%PYEXE%" -m procesos.robot_precia.process --respaldo >> "%LOG%" 2>&1
 set EXITCODE=%ERRORLEVEL%
-
-echo Robot Precia (respaldo) finalizado con codigo %EXITCODE% >> "logs\robot_precia_respaldo_%HOY%.log"
+echo Robot Precia (respaldo) finalizado con codigo %EXITCODE% >> "%LOG%"
 exit /b %EXITCODE%
